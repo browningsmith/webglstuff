@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+   
+    <head>
+
+        <title>WebGL Stuff!</title>
+
+        <style>
+
+            #mycanvas {
+
+                border: 1px solid blue;
+            }
+        </style>
+    </head>
+
+    <body>
+
+        <canvas id = "mycanvas" width = "300" height="300"></canvas>
+
+        <script>
+
+            //Get canvas
+            var canvas = document.getElementById("mycanvas");
+
+            //Get context of canvas
+            var context = canvas.getContext("webgl");
+
+            //Create array of vertices for a triangle
+            var vertices = [0.5, 0.5, 0.5, -0.5, -0.5, -0.5];
+
+            //Create a vertex buffer
+            var vertex_buffer = context.createBuffer();
+
+            //Bind an ARRAY_BUFFER to vertex_buffer
+            context.bindBuffer(context.ARRAY_BUFFER, vertex_buffer);
+
+            //Pass the vertices in vertices array into the buffer
+            context.bufferData(context.ARRAY_BUFFER, new Float32Array(vertices), context.STATIC_DRAW);
+
+            //Unbind the ARRAY_BUFFER
+            context.bindBuffer(context.ARRAY_BUFFER, null);
+        </script>
+    </body>
+</html>
