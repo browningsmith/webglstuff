@@ -1,4 +1,26 @@
-var cubeRotation = 0.0;
+//var cubeRotation = 0.0;
+
+var cameraPosition = {
+
+    x: 0.0,
+    y: 0.0,
+    z: -6.0,
+};
+
+var cameraAngle = {
+
+    pitch: 0.0,
+    roll: 0.0,
+    yaw: 0.0,
+};
+
+var oldMouseCoordinates = {
+
+    hasFirstRecord: false,
+    x: 0,
+    y: 0,
+    z: 0,
+};
 
 main();
 
@@ -6,8 +28,14 @@ main();
 // Start here
 //
 function main() {
+
+  document.addEventListener("keydown", parseKeys);
+
   const canvas = document.querySelector('#canvas');
   const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+
+  canvas.addEventListener("mousemove", updateCameraAngle);
+  canvas.addEventListener("mouseleave", resetMouseCoordinates);
 
   // If we don't have a GL context, give up now
 
@@ -63,15 +91,15 @@ function main() {
   // objects we'll be drawing.
   const buffers = initBuffers(gl);
 
-  var then = 0;
+  //var then = 0;
 
   // Draw the scene repeatedly
   function render(now) {
-    now *= 0.001;  // convert to seconds
-    const deltaTime = now - then;
-    then = now;
+    //now *= 0.001;  // convert to seconds
+    //const deltaTime = now - then;
+    //then = now;
 
-    drawScene(gl, programInfo, buffers, deltaTime);
+    drawScene(gl, programInfo, buffers);
 
     requestAnimationFrame(render);
   }
@@ -240,17 +268,16 @@ function drawScene(gl, programInfo, buffers, deltaTime) {
   // Now move the drawing position a bit to where we want to
   // start drawing the square.
 
+  //Rotate entire world based on camera angle
+  mat4.rotate(modelViewMatrix, //destination matrix
+                modelViewMatrix, //source matrix
+                cameraAngle.pitch, //Rotate around x axis based on camera pitch
+                [1, 0, 0]); //Rotate around x axis for pitch
+
   mat4.translate(modelViewMatrix,     // destination matrix
                  modelViewMatrix,     // matrix to translate
-                 [-0.0, 0.0, -6.0]);  // amount to translate
-  mat4.rotate(modelViewMatrix,  // destination matrix
-              modelViewMatrix,  // matrix to rotate
-              cubeRotation,     // amount to rotate in radians
-              [0, 0, 1]);       // axis to rotate around (Z)
-  mat4.rotate(modelViewMatrix,  // destination matrix
-              modelViewMatrix,  // matrix to rotate
-              cubeRotation * .7,// amount to rotate in radians
-              [0, 1, 0]);       // axis to rotate around (X)
+                 [cameraPosition.x, cameraPosition.y, cameraPosition.z]);  // amount to translate*/
+ 
 
   // Tell WebGL how to pull out the positions from the position
   // buffer into the vertexPosition attribute
@@ -319,7 +346,7 @@ function drawScene(gl, programInfo, buffers, deltaTime) {
 
   // Update the rotation for the next draw
 
-  cubeRotation += deltaTime;
+  //cubeRotation += deltaTime;
 }
 
 //
@@ -370,4 +397,74 @@ function loadShader(gl, type, source) {
   }
 
   return shader;
+}
+
+//Function to parse which keys have been pressed
+function parseKeys(event) {
+
+    console.log(event.code);
+
+    //If it is the left arrow key
+    if (event.code == "KeyA") {
+    
+        cameraPosition.x += 0.1;
+	}
+    else if (event.code == "KeyD") {
+    
+        cameraPosition.x -= 0.1;
+	}
+    else if (event.code == "KeyW") {
+    
+        cameraPosition.z += 0.1;
+	}
+    else if (event.code == "KeyS") {
+    
+        cameraPosition.z -= 0.1;
+	}
+    else if (event.code == "Space") {
+    
+        cameraPosition.y -= 0.1;
+	}
+    else if (event.code == "ShiftLeft") {
+    
+        cameraPosition.y += 0.1;
+	}
+}
+
+//Function to update camera angle when user looks up or down
+function updateCameraAngle(event) {
+
+    //console.log("Mouse movement recorded");
+    
+    //Check to see if we need an initial mouse recording
+    if (oldMouseCoordinates.hasFirstRecord == false) {
+    
+        //Record these as first oldCoordinates
+        oldMouseCoordinates.x = event.offsetX;
+        oldMouseCoordinates.y = event.offsetY;
+
+        //Reset flag
+        oldMouseCoordinates.hasFirstRecord = true;
+
+        return;
+	}
+
+    var deltaX = event.offsetX - oldMouseCoordinates.x; //Get change in x
+    var deltaY = event.offsetY - oldMouseCoordinates.y; //Get change in y
+
+    //Update camera pitch based on change in y
+    cameraAngle.pitch += deltaY * 0.005;
+
+    //Update oldMouseCoordinates
+    oldMouseCoordinates.x = event.offsetX;
+    oldMouseCoordinates.y = event.offsetY;
+}
+
+//Function to reset mouse coordinates hasFirstRecord flag when mouse leaves
+function resetMouseCoordinates(event) {
+
+    //console.log("Mouse leave recorded");
+
+    //Reset flag
+    oldMouseCoordinates.hasFirstRecord = false;
 }
