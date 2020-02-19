@@ -1,5 +1,7 @@
 //var cubeRotation = 0.0;
 
+const speed = 0.2;
+
 var cameraPosition = {
 
     x: 0.0,
@@ -277,6 +279,12 @@ function drawScene(gl, programInfo, buffers, deltaTime) {
                 cameraAngle.pitch, //Rotate around x axis based on camera pitch
                 [1, 0, 0]); //Rotate around x axis for pitch
 
+  //Rotate entire world based on camera angle
+  mat4.rotate(modelViewMatrix, //destination matrix
+    modelViewMatrix, //source matrix
+    cameraAngle.yaw, //Rotate around y axis based on camera yaw
+    [0, 1, 0]); //Rotate around y axis for yaw
+
   mat4.translate(modelViewMatrix,     // destination matrix
                  modelViewMatrix,     // matrix to translate
                  [cameraPosition.x, cameraPosition.y, cameraPosition.z]);  // amount to translate*/
@@ -410,28 +418,56 @@ function parseKeys(event) {
     //If it is the left arrow key
     if (event.code == "KeyA") {
     
-        cameraPosition.x += 0.1;
+        moveLeft(speed);
 	}
     else if (event.code == "KeyD") {
     
-        cameraPosition.x -= 0.1;
+        moveRight(speed);
 	}
     else if (event.code == "KeyW") {
     
-        cameraPosition.z += 0.1;
+        moveForward(speed);
 	}
     else if (event.code == "KeyS") {
     
-        cameraPosition.z -= 0.1;
+        moveBackward(speed);
 	}
     else if (event.code == "Space") {
     
-        cameraPosition.y -= 0.1;
+        cameraPosition.y -= speed;
 	}
     else if (event.code == "ShiftLeft") {
     
-        cameraPosition.y += 0.1;
+        cameraPosition.y += speed;
 	}
+}
+
+//Function to move forward based on Camera yaw position
+function moveForward(speed) {
+
+  cameraPosition.z += speed * Math.cos(cameraAngle.yaw);
+  cameraPosition.x -= speed * Math.sin(cameraAngle.yaw);
+}
+
+//Function to move backward based on Camera yaw position
+function moveBackward(speed) {
+
+  cameraPosition.z -= speed * Math.cos(cameraAngle.yaw);
+  cameraPosition.x += speed * Math.sin(cameraAngle.yaw);
+}
+
+//Function to move left based on Camera yaw position
+function moveLeft(speed) {
+
+  cameraPosition.z += speed * Math.sin(cameraAngle.yaw);
+  cameraPosition.x += speed * Math.cos(cameraAngle.yaw);
+}
+
+//Function to move right based on Camera yaw position
+function moveRight(speed) {
+
+  cameraPosition.z -= speed * Math.sin(cameraAngle.yaw);
+  cameraPosition.x -= speed * Math.cos(cameraAngle.yaw);
 }
 
 //Function to update camera angle when user looks up or down
@@ -457,6 +493,9 @@ function updateCameraAngle(event) {
 
     //Update camera pitch based on change in y
     cameraAngle.pitch += deltaY * 0.005;
+
+    //Update camera yaw based on change in x
+    cameraAngle.yaw += deltaX * 0.005;
 
     //Update oldMouseCoordinates
     oldMouseCoordinates.x = event.offsetX;
