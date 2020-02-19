@@ -32,10 +32,12 @@ function main() {
   document.addEventListener("keydown", parseKeys);
 
   const canvas = document.querySelector('#canvas');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
   const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 
-  canvas.addEventListener("mousemove", updateCameraAngle);
-  canvas.addEventListener("mouseleave", resetMouseCoordinates);
+  document.getElementById("mouseBox").addEventListener("mousemove", updateCameraAngle);
+  document.getElementById("mouseBox").addEventListener("mouseleave", resetMouseCoordinates);
 
   // If we don't have a GL context, give up now
 
@@ -231,6 +233,7 @@ function initBuffers(gl) {
 // Draw the scene.
 //
 function drawScene(gl, programInfo, buffers, deltaTime) {
+
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
   gl.clearDepth(1.0);                 // Clear everything
   gl.enable(gl.DEPTH_TEST);           // Enable depth testing

@@ -5,8 +5,19 @@
 
         <style type="text/css">
 
-            canvas {
+            html, body {
 
+                width: 100%;
+                height: 100%;
+            }
+
+            #mouseBox {
+
+                width: 100%;
+                height: 100%;
+            }
+
+            canvas {
                 border: 1px solid black;
             }
         </style>
@@ -15,9 +26,11 @@
     <body>
 
         <p>Look at my pretty rotating cube!</p>
+        <div id="mouseBox">
         <canvas width="640" height="480" id="canvas"></canvas>
 
         <script src="gl-matrix.js"></script> <!-- For fast matrix math -->
         <script src="mycube.js"></script>
+        </div>
     </body>
 </html>
