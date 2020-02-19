@@ -75,7 +75,7 @@ function main() {
     const deltaTime = now - then;
     then = now;
 
-    drawScene(gl, programInfo, buffers, deltaTime);
+    drawScene(gl, programInfo, buffers, 0);
 
     requestAnimationFrame(render);
   }
