@@ -266,6 +266,8 @@ function drawScene(gl, programInfo, buffers, deltaTime) {
                    zNear,
                    zFar);
 
+  console.log(projectionMatrix);
+
   // Set the drawing position to the "identity" point, which is
   // the center of the scene.
   const modelViewMatrix = mat4.create();
