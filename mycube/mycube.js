@@ -1,5 +1,7 @@
 //const speed = 0.2;
 
+//I added a thingy
+
 /*var cameraPosition = {
 
     x: 0.0,
