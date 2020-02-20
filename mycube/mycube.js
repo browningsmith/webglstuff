@@ -50,6 +50,10 @@ function main() {
     //Get canvas element
     const canvas = document.getElementById("canvas");
 
+    //Expand canvas width and height to fit page
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
     //Get context
     const ctx = canvas.getContext("webgl");
 
@@ -59,10 +63,6 @@ function main() {
         alert("Unable to initialize WebGL. It may not be supported by this browser.");
         return;
 	}
-
-    //Expand canvas width and height to fit page
-    ctx.canvas.width = window.innerWidth;
-    ctx.canvas.height = window.innerHeight;
 
     //Create the shader program
     const shaderProgram = initShader(ctx);
@@ -85,7 +85,14 @@ function main() {
 
     const buffers = initBuffers(ctx);
 
-    drawScene(ctx, shaderProgramData, buffers);
+    function newFrame(now) {
+    
+        drawScene(ctx, shaderProgramData, buffers);
+        
+        requestAnimationFrame(newFrame);
+	}
+
+    requestAnimationFrame(newFrame);
 }
 
 //Function to create the shader program
