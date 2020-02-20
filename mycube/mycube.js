@@ -1,352 +1,210 @@
-//const speed = 0.2;
-
-/*var cameraPosition = {
-
-    x: 0.0,
-    y: 0.0,
-    z: -6.0,
-};
-
-var cameraAngle = {
-
-    pitch: 0.0,
-    roll: 0.0,
-    yaw: 0.0,
-};
-
-var oldMouseCoordinates = {
-
-    hasFirstRecord: false,
-    x: 0,
-    y: 0,
-    z: 0,
-};*/
-
-//Vertex Shader code
 const vertexShaderCode = `
 
-    attribute vec4 avertexPosition;
+    attribute vec4 a_vertexPosition;
     
-    uniform mat4 umodelViewMatrix;
-    uniform mat4 uprojectionMatrix;
+    uniform mat4 u_projectionMatrix;
+    uniform mat4 u_modelViewMatrix;
 
     void main(void) {
-    
-        gl_Position = uprojectionMatrix * umodelViewMatrix * avertexPosition;
-	}
+
+        gl_Position = u_projectionMatrix * u_modelViewMatrix * a_vertexPosition;
+    }
 `;
 
 const fragmentShaderCode = `
 
     void main(void) {
-    
+
         gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
-	}
+    }
 `;
 
-//Main function
+//Main function, to be executed on load
 function main() {
 
     //Get canvas element
     const canvas = document.getElementById("canvas");
 
-    //Expand canvas width and height to fit page
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    //Get context
+    //Get canvas context
     const ctx = canvas.getContext("webgl");
 
-    //If unable to get context, alert the user and terminate program
+    //If unable to get context, alert user and end program
     if (!ctx) {
-    
+
         alert("Unable to initialize WebGL. It may not be supported by this browser.");
         return;
-	}
+    }
+
+    //Clear the canvas
+    ctx.clearColor(0.0, 0.0, 0.0, 1.0); //set clear color to black
+    ctx.clearDepth(1.0); //set clear depth to 1.0
+    ctx.clear(ctx.COLOR_BUFFER_BIT, ctx.DEPTH_BUFFER_BIT);
 
     //Create the shader program
-    const shaderProgram = initShader(ctx);
+    const shaderProgram = createShaderProgram(ctx);
 
-    //Now that the shader program has been created, we need to grab it's data locations
+    //Get location of attributes and uniforms, store in shaderProgramData object
     const shaderProgramData = {
-    
+
         program: shaderProgram,
         attributes: {
-      
-            vertexPosition: ctx.getAttribLocation(shaderProgram, "avertexPosition"),
-		},
 
+            vertexPosition: ctx.getAttribLocation(shaderProgram, "a_vertexPosition"),
+        },
         uniforms: {
-      
-            modelViewMatrix: ctx.getUniformLocation(shaderProgram, "umodelViewMatrix"),
-            projectionMatrix: ctx.getUniformLocation(shaderProgram, "uprojectionMatrix"),
-		},
-	};
 
+            projectionMatrix: ctx.getUniformLocation(shaderProgram, "u_projectionMatrix"),
+            modelViewMatrix: ctx.getUniformLocation(shaderProgram, "u_modelViewMatrix"),
+        },
+    };
+
+    //Create and fill buffers
     const buffers = initBuffers(ctx);
 
     function newFrame(now) {
-    
+
         drawScene(ctx, shaderProgramData, buffers);
-        
+
         requestAnimationFrame(newFrame);
-	}
+    }
 
     requestAnimationFrame(newFrame);
 }
 
-//Function to create the shader program
-function initShader(ctx) {
+//Function to create shader program
+function createShaderProgram(ctx) {
 
-    //Compile the shaders
+    //Compile shaders
     const vertexShader = loadShader(ctx, ctx.VERTEX_SHADER, vertexShaderCode);
     const fragmentShader = loadShader(ctx, ctx.FRAGMENT_SHADER, fragmentShaderCode);
 
-    //Create pointer to a new shader program
+    //Create pointer to new shader program
     const newShaderProgram = ctx.createProgram();
 
-    //Attach the shaders
+    //Attach shaders
     ctx.attachShader(newShaderProgram, vertexShader);
     ctx.attachShader(newShaderProgram, fragmentShader);
 
-    //Link the program to finish
+    //Link program to complete
     ctx.linkProgram(newShaderProgram);
 
-    //If there was an error creating the program, print error to console and exit program
+    //If there was an error linking, print error to console and return null
     if (!ctx.getProgramParameter(newShaderProgram, ctx.LINK_STATUS)) {
-    
+
         console.error("Error creating shader program: " + ctx.getProgramInfoLog(newShaderProgram));
         return null;
-	}
+    }
 
     return newShaderProgram;
 }
 
-//Function to compile and return a Shader
+//Function to compile a shader
 function loadShader(ctx, type, code) {
 
-    //Create pointer to a new Shader
+    //Create pointer to a new shader
     const newShader = ctx.createShader(type);
 
     //Attach the code
     ctx.shaderSource(newShader, code);
 
-    //Compile the Shader
+    //Compile the shader
     ctx.compileShader(newShader);
 
-    //If shader did not compile, write error to console, delete shader, and exit program
+    //If there was an error compiling, print error to console, delete shader, and return null
     if (!ctx.getShaderParameter(newShader, ctx.COMPILE_STATUS)) {
-    
+
         console.error("Error compiling a shader: " + ctx.getShaderInfoLog(newShader));
         ctx.deleteShader(newShader);
         return null;
-	}
+    }
 
     return newShader;
 }
 
-//Function to create buffer for our shapes
+//Function to create and fill buffers
 function initBuffers(ctx) {
 
-    //Buffer for the square's vertices
-    const positionBuffer = ctx.createBuffer();
 
-    //Bind as array Buffer
-    ctx.bindBuffer(ctx.ARRAY_BUFFER, positionBuffer);
+    const squareVertices = [
 
-    //Array of square coordinates
-    const positions = [
-    
-        -1.0, 1.0,
-        1.0, 1.0,
-        -1.0, -1.0,
-        1.0, -1.0,
+        -1.0, -1.0, 0.0,  1.0, -1.0, 0.0,
+        -1.0, 1.0, 0.0, 1.0, 1.0, 0.0,
     ];
 
-    //Fill the Buffer
-    ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(positions), ctx.STATIC_DRAW);
+    //Create pointer to a new buffer
+    const vertexBuffer = ctx.createBuffer();
+
+    //Bind buffer to array buffer
+    ctx.bindBuffer(ctx.ARRAY_BUFFER, vertexBuffer);
+
+    //Pass in the vertex data
+    ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(squareVertices), ctx.STATIC_DRAW);
+
+    const squareIndices = [
+
+        0, 1, 2,
+        1, 2, 3,
+    ];
+
+    //Create pointer to a new buffer
+    const indexBuffer = ctx.createBuffer();
+
+    //Bind buffer to element array buffer
+    ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, indexBuffer);
+
+    //Pass in the index data
+    ctx.bufferData(ctx.ELEMENT_ARRAY_BUFFER, new Uint16Array(squareIndices), ctx.STATIC_DRAW);
 
     return {
-    
-        position: positionBuffer,
-	}
+
+        vertex: vertexBuffer,
+        index: indexBuffer,
+    }
 }
 
-//Function to draw the scene
+//Function to draw a new scene
 function drawScene(ctx, shaderProgramData, buffers) {
 
-    //Clear the scene
-    ctx.clearColor(0.0, 0.0, 0.0, 1.0);
-    ctx.clearDepth(1.0);
-    //Enable depth testing
-    ctx.enable(ctx.DEPTH_TEST);
-    ctx.depthFunc(ctx.LEQUAL);
+    ctx.canvas.width = ctx.canvas.clientWidth;   //Resize canvas to fit CSS styling
+    ctx.canvas.height = ctx.canvas.clientHeight;
+
+    ctx.viewport(0, 0, ctx.canvas.width, ctx.canvas.height); //Resize viewport
+
+    //Clear the canvas
+    ctx.clearColor(0.0, 0.0, 0.0, 1.0); //set clear color to black
+    ctx.clearDepth(1.0); //set clear depth to 1.0
     ctx.clear(ctx.COLOR_BUFFER_BIT, ctx.DEPTH_BUFFER_BIT);
 
-    //Create projection matrix
-    const FOV = 45 * Math.PI / 180; //Field of view 45 degrees converted to radians
-    const aspect = ctx.canvas.clientWidth / ctx.canvas.clientHeight; //Aspect ratio
-    const zNear = 0.1;
-    const zFar = 100.0;
+    //Enable depth testing and have it obscure objects further back
+    ctx.enable(ctx.DEPTH_TEST);
+    ctx.depthFunc(ctx.LEQUAL);
 
-    const newProjectionMatrix = mat4.create(); //Create new identity matrix
+    //Compute new projection matrix
+    const newProjectionMatrix = mat4.create();
+    mat4.perspective(newProjectionMatrix, 45 * Math.PI / 180, ctx.canvas.width / ctx.canvas.height, 0.1, 100.0);
 
-    mat4.perspective(newProjectionMatrix,
-                    FOV,
-                    aspect,
-                    zNear,
-                    zFar
-    );
+    //Compute new model view matrix, move square back by 6
+    const newModelViewMatrix = mat4.create();
 
-    console.log(newProjectionMatrix);
+    mat4.translate(newModelViewMatrix, newModelViewMatrix, [0.0, 0.0, -6.0]);
 
-    //Create the model view matrix
-    const newModelViewMatrix = mat4.create(); //Create new identity matrix
+    //Instruct WebGL how to pull out vertices
+    ctx.bindBuffer(ctx.ARRAY_BUFFER, buffers.vertex);
+    ctx.vertexAttribPointer(shaderProgramData.attributes.vertexPosition, 3, ctx.FLOAT, false, 0, 0);
+    ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexPosition);
 
-    //Move the square back from the camera by 6
-    mat4.translate(newModelViewMatrix,
-                    newModelViewMatrix,
-                    [-0.0, 0.0, -6.0]
-    );
+    //Tell WebGl to use element array
+    ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, buffers.index);
 
-    console.log(newModelViewMatrix);
-
-    //Direct WebGL to pull 2 units out of the positionBuffer
-    {
-    
-        const numComponents = 2; //Pull out two coordinates for vertices each time
-        const type = ctx.FLOAT; //Type is 32 bit FLOAT
-        const normalize = false; //Don't normalize
-        const stride = 0; //There is no space between elements in the Buffer
-        const offset = 0; //There is no offset to start pulling from the buffer
-
-        ctx.bindBuffer(ctx.ARRAY_BUFFER, buffers.position); //Bind the position buffer as array buffer
-
-        //Enable pointer to pass info from buffer to proper attribute
-        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexPosition,
-                                numComponents,
-                                type,
-                                normalize,
-                                stride,
-                                offset,
-        );
-        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexPosition);
-	}
-
-    //Direct WebGL to use the shader program
+    //Tell WebGL to use the shader program
     ctx.useProgram(shaderProgramData.program);
 
-    //Connect the shader uniforms to the proper matrices
+    //Set the uniforms
     ctx.uniformMatrix4fv(shaderProgramData.uniforms.projectionMatrix, false, newProjectionMatrix);
     ctx.uniformMatrix4fv(shaderProgramData.uniforms.modelViewMatrix, false, newModelViewMatrix);
 
-    //Render the primitives!
-    {
-        const offset = 0; //Start on the first Vertex
-        const count = 4; //Number of vertices to Render
-        ctx.drawArrays(ctx.TRIANGLE_STRIP, offset, count);
-	}
+    //Draw triangles
+    ctx.drawElements(ctx.TRIANGLES, 6, ctx.UNSIGNED_SHORT, 0);
 }
-
-/*//Function to parse which keys have been pressed
-function parseKeys(event) {
-
-    console.log(event.code);
-
-    //If it is the left arrow key
-    if (event.code == "KeyA") {
-    
-        moveLeft(speed);
-	}
-    else if (event.code == "KeyD") {
-    
-        moveRight(speed);
-	}
-    else if (event.code == "KeyW") {
-    
-        moveForward(speed);
-	}
-    else if (event.code == "KeyS") {
-    
-        moveBackward(speed);
-	}
-    else if (event.code == "Space") {
-    
-        cameraPosition.y -= speed;
-	}
-    else if (event.code == "ShiftLeft") {
-    
-        cameraPosition.y += speed;
-	}
-}*/
-
-/*//Function to move forward based on Camera yaw position
-function moveForward(speed) {
-
-  cameraPosition.z += speed * Math.cos(cameraAngle.yaw);
-  cameraPosition.x -= speed * Math.sin(cameraAngle.yaw);
-}
-
-//Function to move backward based on Camera yaw position
-function moveBackward(speed) {
-
-  cameraPosition.z -= speed * Math.cos(cameraAngle.yaw);
-  cameraPosition.x += speed * Math.sin(cameraAngle.yaw);
-}
-
-//Function to move left based on Camera yaw position
-function moveLeft(speed) {
-
-  cameraPosition.z += speed * Math.sin(cameraAngle.yaw);
-  cameraPosition.x += speed * Math.cos(cameraAngle.yaw);
-}
-
-//Function to move right based on Camera yaw position
-function moveRight(speed) {
-
-  cameraPosition.z -= speed * Math.sin(cameraAngle.yaw);
-  cameraPosition.x -= speed * Math.cos(cameraAngle.yaw);
-}
-
-//Function to update camera angle when user looks up or down
-function updateCameraAngle(event) {
-
-    //console.log("Mouse movement recorded");
-    
-    //Check to see if we need an initial mouse recording
-    if (oldMouseCoordinates.hasFirstRecord == false) {
-    
-        //Record these as first oldCoordinates
-        oldMouseCoordinates.x = event.offsetX;
-        oldMouseCoordinates.y = event.offsetY;
-
-        //Reset flag
-        oldMouseCoordinates.hasFirstRecord = true;
-
-        return;
-	}
-
-    var deltaX = event.offsetX - oldMouseCoordinates.x; //Get change in x
-    var deltaY = event.offsetY - oldMouseCoordinates.y; //Get change in y
-
-    //Update camera pitch based on change in y
-    cameraAngle.pitch += deltaY * 0.005;
-
-    //Update camera yaw based on change in x
-    cameraAngle.yaw += deltaX * 0.005;
-
-    //Update oldMouseCoordinates
-    oldMouseCoordinates.x = event.offsetX;
-    oldMouseCoordinates.y = event.offsetY;
-}
-
-//Function to reset mouse coordinates hasFirstRecord flag when mouse leaves
-function resetMouseCoordinates(event) {
-
-    //console.log("Mouse leave recorded");
-
-    //Reset flag
-    oldMouseCoordinates.hasFirstRecord = false;
-}*/
 
 window.onload = main;
