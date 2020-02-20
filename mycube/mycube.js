@@ -199,8 +199,10 @@ function drawScene(ctx, shaderProgramData, buffers) {
     //Move the square back from the camera by 6
     mat4.translate(newModelViewMatrix,
                     newModelViewMatrix,
-                    [-0.0, 0.0, -10.0]
+                    [-0.0, 0.0, -6.0]
     );
+
+    console.log(newModelViewMatrix);
 
     //Direct WebGL to pull 2 units out of the positionBuffer
     {
