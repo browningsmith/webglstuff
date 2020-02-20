@@ -1,7 +1,5 @@
 //const speed = 0.2;
 
-//I added a thingy
-
 /*var cameraPosition = {
 
     x: 0.0,
@@ -24,138 +22,221 @@ var oldMouseCoordinates = {
     z: 0,
 };*/
 
+//Vertex Shader code
 const vertexShaderCode = `
 
-  attribute vec4 a_vertexPosition;
+    attribute vec4 avertexPosition;
+    
+    uniform mat4 umodelViewMatrix;
+    uniform mat4 uprojectionMatrix;
 
-  uniform vec4 u_modelViewMatrix;
-  uniform vec4 u_projectionMatrix;
-  
-  void main(void) {
-
-    gl_Position = u_projectionMatrix * u_modelViewMatrix * a_vertexPosition;
-  }
+    void main(void) {
+    
+        gl_Position = uprojectionMatrix * umodelViewMatrix * avertexPosition;
+	}
 `;
 
 const fragmentShaderCode = `
 
-  void main(void) {
-
-    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
-  }
+    void main(void) {
+    
+        gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+	}
 `;
 
-//
-// Start here
-//
+//Main function
 function main() {
 
-  //Get canvas object
-  const canvas = document.getElementById("canvas");
+    //Get canvas element
+    const canvas = document.getElementById("canvas");
 
-  //Get webgl context
-  const ctx = canvas.getContext("webgl");
+    //Get context
+    const ctx = canvas.getContext("webgl");
 
-  //If webgl context was not loaded, error and return
-  if (!ctx) {
+    //If unable to get context, alert the user and terminate program
+    if (!ctx) {
+    
+        alert("Unable to initialize WebGL. It may not be supported by this browser.");
+        return;
+	}
 
-    alert("WebGL was not initialized. It may not be supported by this browser.");
-    return;
-  }
+    //Expand canvas width and height to fit page
+    ctx.canvas.width = window.innerWidth;
+    ctx.canvas.height = window.innerHeight;
 
-  //Expand canvas to fit window
-  ctx.canvas.width = window.innerWidth;
-  ctx.canvas.height = window.innerHeight;
+    //Create the shader program
+    const shaderProgram = initShader(ctx);
 
-  //Clear the canvas
-  ctx.clearColor(0.0, 0.0, 0.0, 1.0);
-  ctx.clearDepth(1.0);
-  ctx.clear(ctx.COLOR_BUFFER_BIT, ctx.DEPTH_BUFFER_BIT);
+    //Now that the shader program has been created, we need to grab it's data locations
+    const shaderProgramData = {
+    
+        program: shaderProgram,
+        attributes: {
+      
+            vertexPosition: ctx.getAttribLocation(shaderProgram, "avertexPosition"),
+		},
 
-  //Create the shader program
-  const shaderProgram = createShaderProgram(ctx);
+        uniforms: {
+      
+            modelViewMatrix: ctx.getUniformLocation(shaderProgram, "umodelViewMatrix"),
+            projectionMatrix: ctx.getUniformLocation(shaderProgram, "uprojectionMatrix"),
+		},
+	};
 
-  //Now that the shader has been created, pull out data locations
-  const shaderProgramData = {
+    const buffers = initBuffers(ctx);
 
-    program: shaderProgram,
-    attributes: {
-
-      vertexPosition: ctx.getAttribLocation(shaderProgram, "a_vertexPosition"),
-    },
-
-    uniforms: {
-
-      modelViewMatrix: ctx.getUniformLocation(shaderProgram, "u_modelViewMatrix"),
-      projectionMatrix: ctx.getUniformLocation(shaderProgram, "u_projectionMatrix"),
-    },
-  };
+    drawScene(ctx, shaderProgramData, buffers);
 }
 
 //Function to create the shader program
-function createShaderProgram(ctx) {
+function initShader(ctx) {
 
-  //Compile the shaders
-  const vertexShader = compileShader(ctx, ctx.VERTEX_SHADER, vertexShaderCode);
-  const fragmentShader = compileShader(ctx, ctx.FRAGMENT_SHADER, fragmentShaderCode);
+    //Compile the shaders
+    const vertexShader = loadShader(ctx, ctx.VERTEX_SHADER, vertexShaderCode);
+    const fragmentShader = loadShader(ctx, ctx.FRAGMENT_SHADER, fragmentShaderCode);
 
-  //Create pointer to a new shader program
-  const newShaderProgram = ctx.createProgram();
+    //Create pointer to a new shader program
+    const newShaderProgram = ctx.createProgram();
 
-  //Attach the shaders
-  ctx.attachShader(newShaderProgram, vertexShader);
-  ctx.attachShader(newShaderProgram, fragmentShader);
+    //Attach the shaders
+    ctx.attachShader(newShaderProgram, vertexShader);
+    ctx.attachShader(newShaderProgram, fragmentShader);
 
-  //Link the program
-  ctx.linkProgram(newShaderProgram);
+    //Link the program to finish
+    ctx.linkProgram(newShaderProgram);
 
-  //If program failed to create, print error to console and exit program
-  if (!ctx.getProgramParameter(newShaderProgram, ctx.LINK_STATUS)) {
+    //If there was an error creating the program, print error to console and exit program
+    if (!ctx.getProgramParameter(newShaderProgram, ctx.LINK_STATUS)) {
+    
+        console.error("Error creating shader program: " + ctx.getProgramInfoLog(newShaderProgram));
+        return null;
+	}
 
-    console.error("Error creating shader program: " + ctx.getProgramInfoLog(newShaderProgram));
-    return null;
-  }
-
-  return newShaderProgram;
+    return newShaderProgram;
 }
 
-//Function to compile a shader
-function compileShader(ctx, type, code) {
+//Function to compile and return a Shader
+function loadShader(ctx, type, code) {
 
-  //Create pointer to a new shader
-  const newShader = ctx.createShader(type);
-  
-  //attach source code
-  ctx.shaderSource(newShader, code);
+    //Create pointer to a new Shader
+    const newShader = ctx.createShader(type);
 
-  //Compile the shader
-  ctx.compileShader(newShader);
+    //Attach the code
+    ctx.shaderSource(newShader, code);
 
-  //If there was an error compiling the shader, print error to console and exit program
-  if (!ctx.getShaderParameter(newShader, ctx.COMPILE_STATUS)) {
+    //Compile the Shader
+    ctx.compileShader(newShader);
 
-    console.error("Unable to compile a shader: " + ctx.getShaderInfoLog(newShader));
-    ctx.deleteShader(newShader);
-    return null;
-  }
+    //If shader did not compile, write error to console, delete shader, and exit program
+    if (!ctx.getShaderParameter(newShader, ctx.COMPILE_STATUS)) {
+    
+        console.error("Error compiling a shader: " + ctx.getShaderInfoLog(newShader));
+        ctx.deleteShader(newShader);
+        return null;
+	}
 
-  return newShader;
+    return newShader;
 }
 
-//Function to initialize buffers
+//Function to create buffer for our shapes
 function initBuffers(ctx) {
 
-  const vertices = [
+    //Buffer for the square's vertices
+    const positionBuffer = ctx.createBuffer();
 
-    -1.0,  1.0,  1.0,
-     1.0,  1.0,  1.0,
-     1.0, -1.0,  1.0,
-    -1.0, -1.0,  1.0,
+    //Bind as array Buffer
+    ctx.bindBuffer(ctx.ARRAY_BUFFER, positionBuffer);
 
-  ];
+    //Array of square coordinates
+    const positions = [
+    
+        -1.0, 1.0,
+        1.0, 1.0,
+        -1.0, -1.0,
+        1.0, -1.0,
+    ];
 
-  //Create pointer to a new buffer
-  
+    //Fill the Buffer
+    ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(positions), ctx.STATIC_DRAW);
+
+    return {
+    
+        position: positionBuffer,
+	}
+}
+
+//Function to draw the scene
+function drawScene(ctx, shaderProgramData, buffers) {
+
+    //Clear the scene
+    ctx.clearColor(0.0, 0.0, 0.0, 1.0);
+    ctx.clearDepth(1.0);
+    //Enable depth testing
+    ctx.enable(ctx.DEPTH_TEST);
+    ctx.depthFunc(ctx.LEQUAL);
+    ctx.clear(ctx.COLOR_BUFFER_BIT, ctx.DEPTH_BUFFER_BIT);
+
+    //Create projection matrix
+    const FOV = 45 * Math.PI / 180; //Field of view 45 degrees converted to radians
+    const aspect = ctx.canvas.clientWidth / ctx.canvas.clientHeight; //Aspect ratio
+    const zNear = 0.1;
+    const zFar = 100.0;
+
+    const newProjectionMatrix = mat4.create(); //Create new identity matrix
+
+    mat4.perspective(newProjectionMatrix,
+                    FOV,
+                    aspect,
+                    zNear,
+                    zFar
+    );
+
+    console.log(newProjectionMatrix);
+
+    //Create the model view matrix
+    const newModelViewMatrix = mat4.create(); //Create new identity matrix
+
+    //Move the square back from the camera by 6
+    mat4.translate(newModelViewMatrix,
+                    newModelViewMatrix,
+                    [-0.0, 0.0, -10.0]
+    );
+
+    //Direct WebGL to pull 2 units out of the positionBuffer
+    {
+    
+        const numComponents = 2; //Pull out two coordinates for vertices each time
+        const type = ctx.FLOAT; //Type is 32 bit FLOAT
+        const normalize = false; //Don't normalize
+        const stride = 0; //There is no space between elements in the Buffer
+        const offset = 0; //There is no offset to start pulling from the buffer
+
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, buffers.position); //Bind the position buffer as array buffer
+
+        //Enable pointer to pass info from buffer to proper attribute
+        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexPosition,
+                                numComponents,
+                                type,
+                                normalize,
+                                stride,
+                                offset,
+        );
+        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexPosition);
+	}
+
+    //Direct WebGL to use the shader program
+    ctx.useProgram(shaderProgramData.program);
+
+    //Connect the shader uniforms to the proper matrices
+    ctx.uniformMatrix4fv(shaderProgramData.uniforms.projectionMatrix, false, newProjectionMatrix);
+    ctx.uniformMatrix4fv(shaderProgramData.uniforms.modelViewMatrix, false, newModelViewMatrix);
+
+    //Render the primitives!
+    {
+        const offset = 0; //Start on the first Vertex
+        const count = 4; //Number of vertices to Render
+        ctx.drawArrays(ctx.TRIANGLE_STRIP, offset, count);
+	}
 }
 
 /*//Function to parse which keys have been pressed
