@@ -22,6 +22,27 @@ var oldMouseCoordinates = {
     z: 0,
 };*/
 
+const vertexShaderCode = `
+
+  attribute vec4 a_vertexPosition;
+
+  uniform vec4 u_modelViewMatrix;
+  uniform vec4 u_projectionMatrix;
+  
+  void main(void) {
+
+    gl_Position = u_projectionMatrix * u_modelViewMatrix * a_vertexPosition;
+  }
+`;
+
+const fragmentShaderCode = `
+
+  void main(void) {
+
+    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+  }
+`;
+
 //
 // Start here
 //
@@ -48,6 +69,91 @@ function main() {
   ctx.clearColor(0.0, 0.0, 0.0, 1.0);
   ctx.clearDepth(1.0);
   ctx.clear(ctx.COLOR_BUFFER_BIT, ctx.DEPTH_BUFFER_BIT);
+
+  //Create the shader program
+  const shaderProgram = createShaderProgram(ctx);
+
+  //Now that the shader has been created, pull out data locations
+  const shaderProgramData = {
+
+    program: shaderProgram,
+    attributes: {
+
+      vertexPosition: ctx.getAttribLocation(shaderProgram, "a_vertexPosition"),
+    },
+
+    uniforms: {
+
+      modelViewMatrix: ctx.getUniformLocation(shaderProgram, "u_modelViewMatrix"),
+      projectionMatrix: ctx.getUniformLocation(shaderProgram, "u_projectionMatrix"),
+    },
+  };
+}
+
+//Function to create the shader program
+function createShaderProgram(ctx) {
+
+  //Compile the shaders
+  const vertexShader = compileShader(ctx, ctx.VERTEX_SHADER, vertexShaderCode);
+  const fragmentShader = compileShader(ctx, ctx.FRAGMENT_SHADER, fragmentShaderCode);
+
+  //Create pointer to a new shader program
+  const newShaderProgram = ctx.createProgram();
+
+  //Attach the shaders
+  ctx.attachShader(newShaderProgram, vertexShader);
+  ctx.attachShader(newShaderProgram, fragmentShader);
+
+  //Link the program
+  ctx.linkProgram(newShaderProgram);
+
+  //If program failed to create, print error to console and exit program
+  if (!ctx.getProgramParameter(newShaderProgram, ctx.LINK_STATUS)) {
+
+    console.error("Error creating shader program: " + ctx.getProgramInfoLog(newShaderProgram));
+    return null;
+  }
+
+  return newShaderProgram;
+}
+
+//Function to compile a shader
+function compileShader(ctx, type, code) {
+
+  //Create pointer to a new shader
+  const newShader = ctx.createShader(type);
+  
+  //attach source code
+  ctx.shaderSource(newShader, code);
+
+  //Compile the shader
+  ctx.compileShader(newShader);
+
+  //If there was an error compiling the shader, print error to console and exit program
+  if (!ctx.getShaderParameter(newShader, ctx.COMPILE_STATUS)) {
+
+    console.error("Unable to compile a shader: " + ctx.getShaderInfoLog(newShader));
+    ctx.deleteShader(newShader);
+    return null;
+  }
+
+  return newShader;
+}
+
+//Function to initialize buffers
+function initBuffers(ctx) {
+
+  const vertices = [
+
+    -1.0,  1.0,  1.0,
+     1.0,  1.0,  1.0,
+     1.0, -1.0,  1.0,
+    -1.0, -1.0,  1.0,
+
+  ];
+
+  //Create pointer to a new buffer
+  
 }
 
 /*//Function to parse which keys have been pressed
