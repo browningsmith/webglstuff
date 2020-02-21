@@ -1,514 +1,210 @@
-//var cubeRotation = 0.0;
+const vertexShaderCode = `
 
-const speed = 0.2;
+    attribute vec4 a_vertexPosition;
+    
+    uniform mat4 u_projectionMatrix;
+    uniform mat4 u_modelViewMatrix;
 
-var cameraPosition = {
+    void main(void) {
 
-    x: 0.0,
-    y: 0.0,
-    z: -6.0,
-};
+        gl_Position = u_projectionMatrix * u_modelViewMatrix * a_vertexPosition;
+    }
+`;
 
-var cameraAngle = {
+const fragmentShaderCode = `
 
-    pitch: 0.0,
-    roll: 0.0,
-    yaw: 0.0,
-};
+    void main(void) {
 
-var oldMouseCoordinates = {
+        gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    }
+`;
 
-    hasFirstRecord: false,
-    x: 0,
-    y: 0,
-    z: 0,
-};
-
-main();
-
-//
-// Start here
-//
+//Main function, to be executed on load
 function main() {
 
-  document.addEventListener("keydown", parseKeys);
+    //Get canvas element
+    const canvas = document.getElementById("canvas");
 
-  const canvas = document.querySelector('#canvas');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    //Get canvas context
+    const ctx = canvas.getContext("webgl");
 
-  document.getElementById("mouseBox").addEventListener("mousemove", updateCameraAngle);
-  document.getElementById("mouseBox").addEventListener("mouseleave", resetMouseCoordinates);
+    //If unable to get context, alert user and end program
+    if (!ctx) {
 
-  // If we don't have a GL context, give up now
-
-  if (!gl) {
-    alert('Unable to initialize WebGL. Your browser or machine may not support it.');
-    return;
-  }
-
-  // Vertex shader program
-
-  const vsSource = `
-    attribute vec4 aVertexPosition;
-    attribute vec4 aVertexColor;
-    uniform mat4 uModelViewMatrix;
-    uniform mat4 uProjectionMatrix;
-    varying lowp vec4 vColor;
-    void main(void) {
-      gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-      vColor = aVertexColor;
-    }
-  `;
-
-  // Fragment shader program
-
-  const fsSource = `
-    varying lowp vec4 vColor;
-    void main(void) {
-      gl_FragColor = vColor;
-    }
-  `;
-
-  // Initialize a shader program; this is where all the lighting
-  // for the vertices and so forth is established.
-  const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
-
-  // Collect all the info needed to use the shader program.
-  // Look up which attributes our shader program is using
-  // for aVertexPosition, aVevrtexColor and also
-  // look up uniform locations.
-  const programInfo = {
-    program: shaderProgram,
-    attribLocations: {
-      vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
-      vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
-    },
-    uniformLocations: {
-      projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
-      modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
-    },
-  };
-
-  // Here's where we call the routine that builds all the
-  // objects we'll be drawing.
-  const buffers = initBuffers(gl);
-
-  //var then = 0;
-
-  // Draw the scene repeatedly
-  function render(now) {
-    //now *= 0.001;  // convert to seconds
-    //const deltaTime = now - then;
-    //then = now;
-
-    drawScene(gl, programInfo, buffers);
-
-    requestAnimationFrame(render);
-  }
-  requestAnimationFrame(render);
-}
-
-//
-// initBuffers
-//
-// Initialize the buffers we'll need. For this demo, we just
-// have one object -- a simple three-dimensional cube.
-//
-function initBuffers(gl) {
-
-  // Create a buffer for the cube's vertex positions.
-
-  const positionBuffer = gl.createBuffer();
-
-  // Select the positionBuffer as the one to apply buffer
-  // operations to from here out.
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
-  // Now create an array of positions for the cube.
-
-  const positions = [
-    // Front face
-    -1.0, -1.0,  1.0,
-     1.0, -1.0,  1.0,
-     1.0,  1.0,  1.0,
-    -1.0,  1.0,  1.0,
-
-    // Back face
-    -1.0, -1.0, -1.0,
-    -1.0,  1.0, -1.0,
-     1.0,  1.0, -1.0,
-     1.0, -1.0, -1.0,
-
-    // Top face
-    -1.0,  1.0, -1.0,
-    -1.0,  1.0,  1.0,
-     1.0,  1.0,  1.0,
-     1.0,  1.0, -1.0,
-
-    // Bottom face
-    -1.0, -1.0, -1.0,
-     1.0, -1.0, -1.0,
-     1.0, -1.0,  1.0,
-    -1.0, -1.0,  1.0,
-
-    // Right face
-     1.0, -1.0, -1.0,
-     1.0,  1.0, -1.0,
-     1.0,  1.0,  1.0,
-     1.0, -1.0,  1.0,
-
-    // Left face
-    -1.0, -1.0, -1.0,
-    -1.0, -1.0,  1.0,
-    -1.0,  1.0,  1.0,
-    -1.0,  1.0, -1.0,
-  ];
-
-  // Now pass the list of positions into WebGL to build the
-  // shape. We do this by creating a Float32Array from the
-  // JavaScript array, then use it to fill the current buffer.
-
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-
-  // Now set up the colors for the faces. We'll use solid colors
-  // for each face.
-
-  const faceColors = [
-    [1.0,  1.0,  1.0,  1.0],    // Front face: white
-    [1.0,  0.0,  0.0,  1.0],    // Back face: red
-    [0.0,  1.0,  0.0,  1.0],    // Top face: green
-    [0.0,  0.0,  1.0,  1.0],    // Bottom face: blue
-    [1.0,  1.0,  0.0,  1.0],    // Right face: yellow
-    [1.0,  0.0,  1.0,  1.0],    // Left face: purple
-  ];
-
-  // Convert the array of colors into a table for all the vertices.
-
-  var colors = [];
-
-  for (var j = 0; j < faceColors.length; ++j) {
-    const c = faceColors[j];
-
-    // Repeat each color four times for the four vertices of the face
-    colors = colors.concat(c, c, c, c);
-  }
-
-  const colorBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-
-  // Build the element array buffer; this specifies the indices
-  // into the vertex arrays for each face's vertices.
-
-  const indexBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-
-  // This array defines each face as two triangles, using the
-  // indices into the vertex array to specify each triangle's
-  // position.
-
-  const indices = [
-    0,  1,  2,      0,  2,  3,    // front
-    4,  5,  6,      4,  6,  7,    // back
-    8,  9,  10,     8,  10, 11,   // top
-    12, 13, 14,     12, 14, 15,   // bottom
-    16, 17, 18,     16, 18, 19,   // right
-    20, 21, 22,     20, 22, 23,   // left
-  ];
-
-  // Now send the element array to GL
-
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
-      new Uint16Array(indices), gl.STATIC_DRAW);
-
-  return {
-    position: positionBuffer,
-    color: colorBuffer,
-    indices: indexBuffer,
-  };
-}
-
-//
-// Draw the scene.
-//
-function drawScene(gl, programInfo, buffers, deltaTime) {
-
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
-  gl.clearDepth(1.0);                 // Clear everything
-  gl.enable(gl.DEPTH_TEST);           // Enable depth testing
-  gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
-
-  // Clear the canvas before we start drawing on it.
-
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-  // Create a perspective matrix, a special matrix that is
-  // used to simulate the distortion of perspective in a camera.
-  // Our field of view is 45 degrees, with a width/height
-  // ratio that matches the display size of the canvas
-  // and we only want to see objects between 0.1 units
-  // and 100 units away from the camera.
-
-  const fieldOfView = 45 * Math.PI / 180;   // in radians
-  const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
-  const zNear = 0.1;
-  const zFar = 100.0;
-  const projectionMatrix = mat4.create();
-
-  // note: glmatrix.js always has the first argument
-  // as the destination to receive the result.
-  mat4.perspective(projectionMatrix,
-                   fieldOfView,
-                   aspect,
-                   zNear,
-                   zFar);
-
-  console.log(projectionMatrix);
-
-  // Set the drawing position to the "identity" point, which is
-  // the center of the scene.
-  const modelViewMatrix = mat4.create();
-
-  // Now move the drawing position a bit to where we want to
-  // start drawing the square.
-
-  //Rotate entire world based on camera angle
-  mat4.rotate(modelViewMatrix, //destination matrix
-                modelViewMatrix, //source matrix
-                cameraAngle.pitch, //Rotate around x axis based on camera pitch
-                [1, 0, 0]); //Rotate around x axis for pitch
-
-  //Rotate entire world based on camera angle
-  mat4.rotate(modelViewMatrix, //destination matrix
-    modelViewMatrix, //source matrix
-    cameraAngle.yaw, //Rotate around y axis based on camera yaw
-    [0, 1, 0]); //Rotate around y axis for yaw
-
-  mat4.translate(modelViewMatrix,     // destination matrix
-                 modelViewMatrix,     // matrix to translate
-                 [cameraPosition.x, cameraPosition.y, cameraPosition.z]);  // amount to translate*/
- 
-
-  // Tell WebGL how to pull out the positions from the position
-  // buffer into the vertexPosition attribute
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
-    gl.vertexAttribPointer(
-        programInfo.attribLocations.vertexPosition,
-        numComponents,
-        type,
-        normalize,
-        stride,
-        offset);
-    gl.enableVertexAttribArray(
-        programInfo.attribLocations.vertexPosition);
-  }
-
-  // Tell WebGL how to pull out the colors from the color buffer
-  // into the vertexColor attribute.
-  {
-    const numComponents = 4;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
-    gl.vertexAttribPointer(
-        programInfo.attribLocations.vertexColor,
-        numComponents,
-        type,
-        normalize,
-        stride,
-        offset);
-    gl.enableVertexAttribArray(
-        programInfo.attribLocations.vertexColor);
-  }
-
-  // Tell WebGL which indices to use to index the vertices
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-
-  // Tell WebGL to use our program when drawing
-
-  gl.useProgram(programInfo.program);
-
-  // Set the shader uniforms
-
-  gl.uniformMatrix4fv(
-      programInfo.uniformLocations.projectionMatrix,
-      false,
-      projectionMatrix);
-  gl.uniformMatrix4fv(
-      programInfo.uniformLocations.modelViewMatrix,
-      false,
-      modelViewMatrix);
-
-  {
-    const vertexCount = 36;
-    const type = gl.UNSIGNED_SHORT;
-    const offset = 0;
-    gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
-  }
-
-  // Update the rotation for the next draw
-
-  //cubeRotation += deltaTime;
-}
-
-//
-// Initialize a shader program, so WebGL knows how to draw our data
-//
-function initShaderProgram(gl, vsSource, fsSource) {
-  const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
-  const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
-
-  // Create the shader program
-
-  const shaderProgram = gl.createProgram();
-  gl.attachShader(shaderProgram, vertexShader);
-  gl.attachShader(shaderProgram, fragmentShader);
-  gl.linkProgram(shaderProgram);
-
-  // If creating the shader program failed, alert
-
-  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-    alert('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
-    return null;
-  }
-
-  return shaderProgram;
-}
-
-//
-// creates a shader of the given type, uploads the source and
-// compiles it.
-//
-function loadShader(gl, type, source) {
-  const shader = gl.createShader(type);
-
-  // Send the source to the shader object
-
-  gl.shaderSource(shader, source);
-
-  // Compile the shader program
-
-  gl.compileShader(shader);
-
-  // See if it compiled successfully
-
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    alert('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
-    gl.deleteShader(shader);
-    return null;
-  }
-
-  return shader;
-}
-
-//Function to parse which keys have been pressed
-function parseKeys(event) {
-
-    console.log(event.code);
-
-    //If it is the left arrow key
-    if (event.code == "KeyA") {
-    
-        moveLeft(speed);
-	}
-    else if (event.code == "KeyD") {
-    
-        moveRight(speed);
-	}
-    else if (event.code == "KeyW") {
-    
-        moveForward(speed);
-	}
-    else if (event.code == "KeyS") {
-    
-        moveBackward(speed);
-	}
-    else if (event.code == "Space") {
-    
-        cameraPosition.y -= speed;
-	}
-    else if (event.code == "ShiftLeft") {
-    
-        cameraPosition.y += speed;
-	}
-}
-
-//Function to move forward based on Camera yaw position
-function moveForward(speed) {
-
-  cameraPosition.z += speed * Math.cos(cameraAngle.yaw);
-  cameraPosition.x -= speed * Math.sin(cameraAngle.yaw);
-}
-
-//Function to move backward based on Camera yaw position
-function moveBackward(speed) {
-
-  cameraPosition.z -= speed * Math.cos(cameraAngle.yaw);
-  cameraPosition.x += speed * Math.sin(cameraAngle.yaw);
-}
-
-//Function to move left based on Camera yaw position
-function moveLeft(speed) {
-
-  cameraPosition.z += speed * Math.sin(cameraAngle.yaw);
-  cameraPosition.x += speed * Math.cos(cameraAngle.yaw);
-}
-
-//Function to move right based on Camera yaw position
-function moveRight(speed) {
-
-  cameraPosition.z -= speed * Math.sin(cameraAngle.yaw);
-  cameraPosition.x -= speed * Math.cos(cameraAngle.yaw);
-}
-
-//Function to update camera angle when user looks up or down
-function updateCameraAngle(event) {
-
-    //console.log("Mouse movement recorded");
-    
-    //Check to see if we need an initial mouse recording
-    if (oldMouseCoordinates.hasFirstRecord == false) {
-    
-        //Record these as first oldCoordinates
-        oldMouseCoordinates.x = event.offsetX;
-        oldMouseCoordinates.y = event.offsetY;
-
-        //Reset flag
-        oldMouseCoordinates.hasFirstRecord = true;
-
+        alert("Unable to initialize WebGL. It may not be supported by this browser.");
         return;
-	}
+    }
 
-    var deltaX = event.offsetX - oldMouseCoordinates.x; //Get change in x
-    var deltaY = event.offsetY - oldMouseCoordinates.y; //Get change in y
+    //Clear the canvas
+    ctx.clearColor(0.0, 0.0, 0.0, 1.0); //set clear color to black
+    ctx.clearDepth(1.0); //set clear depth to 1.0
+    ctx.clear(ctx.COLOR_BUFFER_BIT, ctx.DEPTH_BUFFER_BIT);
 
-    //Update camera pitch based on change in y
-    cameraAngle.pitch += deltaY * 0.005;
+    //Create the shader program
+    const shaderProgram = createShaderProgram(ctx);
 
-    //Update camera yaw based on change in x
-    cameraAngle.yaw += deltaX * 0.005;
+    //Get location of attributes and uniforms, store in shaderProgramData object
+    const shaderProgramData = {
 
-    //Update oldMouseCoordinates
-    oldMouseCoordinates.x = event.offsetX;
-    oldMouseCoordinates.y = event.offsetY;
+        program: shaderProgram,
+        attributes: {
+
+            vertexPosition: ctx.getAttribLocation(shaderProgram, "a_vertexPosition"),
+        },
+        uniforms: {
+
+            projectionMatrix: ctx.getUniformLocation(shaderProgram, "u_projectionMatrix"),
+            modelViewMatrix: ctx.getUniformLocation(shaderProgram, "u_modelViewMatrix"),
+        },
+    };
+
+    //Create and fill buffers
+    const buffers = initBuffers(ctx);
+
+    function newFrame(now) {
+
+        drawScene(ctx, shaderProgramData, buffers);
+
+        requestAnimationFrame(newFrame);
+    }
+
+    requestAnimationFrame(newFrame);
 }
 
-//Function to reset mouse coordinates hasFirstRecord flag when mouse leaves
-function resetMouseCoordinates(event) {
+//Function to create shader program
+function createShaderProgram(ctx) {
 
-    //console.log("Mouse leave recorded");
+    //Compile shaders
+    const vertexShader = loadShader(ctx, ctx.VERTEX_SHADER, vertexShaderCode);
+    const fragmentShader = loadShader(ctx, ctx.FRAGMENT_SHADER, fragmentShaderCode);
 
-    //Reset flag
-    oldMouseCoordinates.hasFirstRecord = false;
+    //Create pointer to new shader program
+    const newShaderProgram = ctx.createProgram();
+
+    //Attach shaders
+    ctx.attachShader(newShaderProgram, vertexShader);
+    ctx.attachShader(newShaderProgram, fragmentShader);
+
+    //Link program to complete
+    ctx.linkProgram(newShaderProgram);
+
+    //If there was an error linking, print error to console and return null
+    if (!ctx.getProgramParameter(newShaderProgram, ctx.LINK_STATUS)) {
+
+        console.error("Error creating shader program: " + ctx.getProgramInfoLog(newShaderProgram));
+        return null;
+    }
+
+    return newShaderProgram;
 }
+
+//Function to compile a shader
+function loadShader(ctx, type, code) {
+
+    //Create pointer to a new shader
+    const newShader = ctx.createShader(type);
+
+    //Attach the code
+    ctx.shaderSource(newShader, code);
+
+    //Compile the shader
+    ctx.compileShader(newShader);
+
+    //If there was an error compiling, print error to console, delete shader, and return null
+    if (!ctx.getShaderParameter(newShader, ctx.COMPILE_STATUS)) {
+
+        console.error("Error compiling a shader: " + ctx.getShaderInfoLog(newShader));
+        ctx.deleteShader(newShader);
+        return null;
+    }
+
+    return newShader;
+}
+
+//Function to create and fill buffers
+function initBuffers(ctx) {
+
+
+    const squareVertices = [
+
+        -1.0, -1.0, 0.0,  1.0, -1.0, 0.0,
+        -1.0, 1.0, 0.0, 1.0, 1.0, 0.0,
+    ];
+
+    //Create pointer to a new buffer
+    const vertexBuffer = ctx.createBuffer();
+
+    //Bind buffer to array buffer
+    ctx.bindBuffer(ctx.ARRAY_BUFFER, vertexBuffer);
+
+    //Pass in the vertex data
+    ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(squareVertices), ctx.STATIC_DRAW);
+
+    const squareIndices = [
+
+        0, 1, 2,
+        1, 2, 3,
+    ];
+
+    //Create pointer to a new buffer
+    const indexBuffer = ctx.createBuffer();
+
+    //Bind buffer to element array buffer
+    ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, indexBuffer);
+
+    //Pass in the index data
+    ctx.bufferData(ctx.ELEMENT_ARRAY_BUFFER, new Uint16Array(squareIndices), ctx.STATIC_DRAW);
+
+    return {
+
+        vertex: vertexBuffer,
+        index: indexBuffer,
+    }
+}
+
+//Function to draw a new scene
+function drawScene(ctx, shaderProgramData, buffers) {
+
+    ctx.canvas.width = ctx.canvas.clientWidth;   //Resize canvas to fit CSS styling
+    ctx.canvas.height = ctx.canvas.clientHeight;
+
+    ctx.viewport(0, 0, ctx.canvas.width, ctx.canvas.height); //Resize viewport
+
+    //Clear the canvas
+    ctx.clearColor(0.0, 0.0, 0.0, 1.0); //set clear color to black
+    ctx.clearDepth(1.0); //set clear depth to 1.0
+    ctx.clear(ctx.COLOR_BUFFER_BIT, ctx.DEPTH_BUFFER_BIT);
+
+    //Enable depth testing and have it obscure objects further back
+    ctx.enable(ctx.DEPTH_TEST);
+    ctx.depthFunc(ctx.LEQUAL);
+
+    //Compute new projection matrix
+    const newProjectionMatrix = mat4.create();
+    mat4.perspective(newProjectionMatrix, 45 * Math.PI / 180, ctx.canvas.width / ctx.canvas.height, 0.1, 100.0);
+
+    //Compute new model view matrix, move square back by 6
+    const newModelViewMatrix = mat4.create();
+
+    mat4.translate(newModelViewMatrix, newModelViewMatrix, [0.0, 0.0, -6.0]);
+
+    //Instruct WebGL how to pull out vertices
+    ctx.bindBuffer(ctx.ARRAY_BUFFER, buffers.vertex);
+    ctx.vertexAttribPointer(shaderProgramData.attributes.vertexPosition, 3, ctx.FLOAT, false, 0, 0);
+    ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexPosition);
+
+    //Tell WebGl to use element array
+    ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, buffers.index);
+
+    //Tell WebGL to use the shader program
+    ctx.useProgram(shaderProgramData.program);
+
+    //Set the uniforms
+    ctx.uniformMatrix4fv(shaderProgramData.uniforms.projectionMatrix, false, newProjectionMatrix);
+    ctx.uniformMatrix4fv(shaderProgramData.uniforms.modelViewMatrix, false, newModelViewMatrix);
+
+    //Draw triangles
+    ctx.drawElements(ctx.TRIANGLES, 6, ctx.UNSIGNED_SHORT, 0);
+}
+
+window.onload = main;
