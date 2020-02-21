@@ -1,134 +1,199 @@
 const vertexShaderCode = `
 
     attribute vec4 a_vertexPosition;
+    attribute vec3 a_vertexNormal;
     attribute vec4 a_vertexColor;
     
     uniform mat4 u_projectionMatrix;
     uniform mat4 u_modelViewMatrix;
+    uniform mat4 u_normalMatrix;
+    uniform mat4 u_worldViewMatrix;
 
     varying lowp vec4 v_currentColor;
+    varying highp vec3 v_currentLighting;
 
     void main(void) {
 
-        gl_Position = u_projectionMatrix * u_modelViewMatrix * a_vertexPosition;
+        gl_Position = u_projectionMatrix * u_worldViewMatrix * u_modelViewMatrix * a_vertexPosition;
         v_currentColor = a_vertexColor;
+        
+        highp vec3 ambientLight = vec3(0.3, 0.3, 0.3); //Set ambientLight to 0.3 rgb
+        highp vec3 directionalLightColor = vec3(1.0, 1.0, 1.0); //Set directional light color to white
+
+        highp vec3 lightDirection = normalize(vec3(3.0, 0.0, 0.0)); //Set light direction vector
+
+        highp vec4 transformedNormal = u_normalMatrix * vec4(a_vertexNormal, 1.0); //Compute new normals based on cube rotation
+
+        highp float directional = max(dot(transformedNormal.xyz, lightDirection),0.0); //Compute directional based on transformed normal and direction of light
+
+        v_currentLighting = ambientLight + (directionalLightColor * directional); //Compute lighting of current vertex as ambient light plus directional light times the directional thingy
     }
 `;
 
 const fragmentShaderCode = `
 
     varying lowp vec4 v_currentColor;
+    varying lowp vec3 v_currentLighting;
 
     void main(void) {
 
-        gl_FragColor = v_currentColor;
+        gl_FragColor = vec4(v_currentColor.rgb * v_currentLighting, 1.0);
     }
 `;
 
 var models = {
 
-    ground: {
-    
-        vertexValues: [
-        
-            -200.0, 0.0, -200.0,
-            -200.0, 0.0, 200.0,
-            200.0, 0.0, -200.0,
-            200.0, 0.0, 200.0,
-        ],
-
-        colorValues: [
-        
-            0.0, 0.5, 0.0, 1.0,
-            0.0, 0.5, 0.0, 1.0,
-            0.0, 0.5, 0.0, 1.0,
-            0.0, 0.5, 0.0, 1.0,
-        ],
-
-        indexValues: [
-        
-            0, 1, 2,
-            1, 2, 3,
-        ],
-
-        indexCount: 6,
-    },
-    
-    house: {
+    cube: {
 
         vertexValues: [
 
-            //back
-            -1.0, 0.0, -1.0,
-            1.0, 0.0, -1.0,
-            -1.0, 2.0, -1.0,
-            1.0, 2.0, -1.0,
-
-            //left
-            -1.0, 0.0, -1.0,
-            -1.0, 0.0, 1.0,
-            -1.0, 2.0, -1.0,
-            -1.0, 2.0, 1.0,
-
-            //right
-            1.0, 0.0, -1.0,
-            1.0, 0.0, 1.0,
-            1.0, 2.0, -1.0,
-            1.0, 2.0, 1.0,
-        ],
-        colorValues: [
-
-            128.0 / 256.0, 64.0 / 256, 0.0, 1.0,
-            128.0 / 256.0, 64.0 / 256, 0.0, 1.0,
-            128.0 / 256.0, 64.0 / 256, 0.0, 1.0,
-            128.0 / 256.0, 64.0 / 256, 0.0, 1.0,
-
-            128.0 / 256.0, 64.0 / 256, 0.0, 1.0,
-            128.0 / 256.0, 64.0 / 256, 0.0, 1.0,
-            128.0 / 256.0, 64.0 / 256, 0.0, 1.0,
-            128.0 / 256.0, 64.0 / 256, 0.0, 1.0,
-
-            128.0 / 256.0, 64.0 / 256, 0.0, 1.0,
-            128.0 / 256.0, 64.0 / 256, 0.0, 1.0,
-            128.0 / 256.0, 64.0 / 256, 0.0, 1.0,
-            128.0 / 256.0, 64.0 / 256, 0.0, 1.0,
+            // Front face
+            -1.0, -1.0,  1.0,
+            1.0, -1.0,  1.0,
+            1.0,  1.0,  1.0,
+            -1.0,  1.0,  1.0,
             
+            // Back face
+            -1.0, -1.0, -1.0,
+            -1.0,  1.0, -1.0,
+            1.0,  1.0, -1.0,
+            1.0, -1.0, -1.0,
+            
+            // Top face
+            -1.0,  1.0, -1.0,
+            -1.0,  1.0,  1.0,
+            1.0,  1.0,  1.0,
+            1.0,  1.0, -1.0,
+            
+            // Bottom face
+            -1.0, -1.0, -1.0,
+            1.0, -1.0, -1.0,
+            1.0, -1.0,  1.0,
+            -1.0, -1.0,  1.0,
+            
+            // Right face
+            1.0, -1.0, -1.0,
+            1.0,  1.0, -1.0,
+            1.0,  1.0,  1.0,
+            1.0, -1.0,  1.0,
+            
+            // Left face
+            -1.0, -1.0, -1.0,
+            -1.0, -1.0,  1.0,
+            -1.0,  1.0,  1.0,
+            -1.0,  1.0, -1.0,
         ],
+
+        normalValues: [
+
+            // Front
+            0.0,  0.0,  1.0,
+            0.0,  0.0,  1.0,
+            0.0,  0.0,  1.0,
+            0.0,  0.0,  1.0,
+
+            // Back
+            0.0,  0.0, -1.0,
+            0.0,  0.0, -1.0,
+            0.0,  0.0, -1.0,
+            0.0,  0.0, -1.0,
+
+            // Top
+            0.0,  1.0,  0.0,
+            0.0,  1.0,  0.0,
+            0.0,  1.0,  0.0,
+            0.0,  1.0,  0.0,
+
+            // Bottom
+            0.0, -1.0,  0.0,
+            0.0, -1.0,  0.0,
+            0.0, -1.0,  0.0,
+            0.0, -1.0,  0.0,
+
+            // Right
+            1.0,  0.0,  0.0,
+            1.0,  0.0,  0.0,
+            1.0,  0.0,  0.0,
+            1.0,  0.0,  0.0,
+
+            // Left
+            -1.0,  0.0,  0.0,
+            -1.0,  0.0,  0.0,
+            -1.0,  0.0,  0.0,
+            -1.0,  0.0,  0.0
+        ],
+
+        colorValues: [
+
+            //Front white
+            1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0,
+            
+
+            //Back Red
+            1.0, 0.0, 0.0, 1.0,
+            1.0, 0.0, 0.0, 1.0,
+            1.0, 0.0, 0.0, 1.0,
+            1.0, 0.0, 0.0, 1.0,
+            
+
+            //Top Green
+            0.0, 1.0, 0.0, 1.0,
+            0.0, 1.0, 0.0, 1.0,
+            0.0, 1.0, 0.0, 1.0,
+            0.0, 1.0, 0.0, 1.0,
+            
+
+            //Bottom blue
+            0.0, 0.0, 1.0, 1.0,
+            0.0, 0.0, 1.0, 1.0,
+            0.0, 0.0, 1.0, 1.0,
+            0.0, 0.0, 1.0, 1.0,
+            
+
+            //Right purple
+            1.0, 0.0, 1.0, 1.0,
+            1.0, 0.0, 1.0, 1.0,
+            1.0, 0.0, 1.0, 1.0,
+            1.0, 0.0, 1.0, 1.0,
+            
+
+            //Left yellow
+            1.0, 1.0, 0.0, 1.0,
+            1.0, 1.0, 0.0, 1.0,
+            1.0, 1.0, 0.0, 1.0,
+            1.0, 1.0, 0.0, 1.0,
+        ],
+
         indexValues: [
 
             0, 1, 2,
-            1, 2, 3,
+            0, 2, 3,
 
             4, 5, 6,
-            5, 6, 7,
+            4, 6, 7,
 
             8, 9, 10,
-            9, 10, 11,
+            8, 10, 11,
+
+            12, 13, 14,
+            12, 14, 15,
+
+            16, 17, 18,
+            16, 18, 19,
+
+            20, 21, 22,
+            20, 22, 23,
         ],
-        indexCount: 18,
+        indexCount: 36,
     },
 };
 
 var objects = {
 
-    ground: {
-    
-        x: 0.0,
-        y: 0.0,
-        z: 0.0,
-
-        roll: 0.0,
-        pitch: 0.0,
-        yaw: 0.0,
-
-        rollSpeed: 0.0,
-        pitchSpeed: 0.0,
-        yawSpeed: 0.0,
-
-        model: models.ground,
-    },
-    
-    house: {
+    cube1: {
     
         x: 0.0,
         y: 0.0,
@@ -138,19 +203,70 @@ var objects = {
         pitch: 0.0,
         yaw: 0.0,
 
+        rollSpeed: 1.0,
+        pitchSpeed: 0.0,
+        yawSpeed: 2.0,
+
+        model: models.cube,
+    },
+
+    cube2: {
+    
+        x: 0.0,
+        y: -3.0,
+        z: -12.0,
+
+        roll: 0.0,
+        pitch: 0.0,
+        yaw: 0.0,
+
         rollSpeed: 0.0,
         pitchSpeed: 0.0,
         yawSpeed: 0.0,
 
-        model: models.house,
-	},
+        model: models.cube,
+    },
+
+    cube3: {
+    
+        x: 0.0,
+        y: 0.0,
+        z: -18.0,
+
+        roll: 0.0,
+        pitch: 0.0,
+        yaw: 0.0,
+
+        rollSpeed: 0.0,
+        pitchSpeed: 0.0,
+        yawSpeed: 0.0,
+
+        model: models.cube,
+    },
+
+    cube4: {
+    
+        x: 0.0,
+        y: 0.0,
+        z: -24.0,
+
+        roll: 0.0,
+        pitch: 0.0,
+        yaw: 0.0,
+
+        rollSpeed: 0.0,
+        pitchSpeed: 0.0,
+        yawSpeed: 0.0,
+
+        model: models.cube,
+    },
 };
 
 //Camera object, contains data on camera position and angle
 var camera = {
 
     x: 0.0, //Camera initialized at origin
-    y: 1.0,
+    y: 0.0,
     z: 0.0,
 
     roll: 0.0, //Camera facing forward (or something)
@@ -205,11 +321,14 @@ function main() {
 
             vertexPosition: ctx.getAttribLocation(shaderProgram, "a_vertexPosition"),
             vertexColor: ctx.getAttribLocation(shaderProgram, "a_vertexColor"),
+            vertexNormal: ctx.getAttribLocation(shaderProgram, "a_vertexNormal"),
         },
         uniforms: {
 
             projectionMatrix: ctx.getUniformLocation(shaderProgram, "u_projectionMatrix"),
             modelViewMatrix: ctx.getUniformLocation(shaderProgram, "u_modelViewMatrix"),
+            worldViewMatrix: ctx.getUniformLocation(shaderProgram, "u_worldViewMatrix"),
+            normalMatrix: ctx.getUniformLocation(shaderProgram, "u_normalMatrix"),
         },
     };
 
@@ -321,11 +440,21 @@ function initBuffers(ctx, model) {
     //Pass in the index data
     ctx.bufferData(ctx.ELEMENT_ARRAY_BUFFER, new Uint16Array(models[model].indexValues), ctx.STATIC_DRAW);
 
+    //Create pointer to a new buffer
+    var normalBuffer = ctx.createBuffer();
+
+    //Bind the buffer to array buffer
+    ctx.bindBuffer(ctx.ARRAY_BUFFER, normalBuffer);
+
+    //Pass in normals data
+    ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(models[model].normalValues), ctx.STATIC_DRAW);
+
     return {
 
         vertex: vertexBuffer,
         index: indexBuffer,
         color: colorBuffer,
+        normal: normalBuffer,
     };
 }
 
@@ -354,14 +483,22 @@ function drawScene(ctx, shaderProgramData, deltaT) {
         //Compute new model view matrix
         const newModelViewMatrix = mat4.create();
 
-        mat4.rotate(newModelViewMatrix, newModelViewMatrix, camera.pitch, [1, 0, 0]);  //Sixth transform: rotate based on camera pitch
-        mat4.rotate(newModelViewMatrix, newModelViewMatrix, camera.yaw, [0, 1, 0]); //Fifth transform: rotate based on camera yaw
-        mat4.translate(newModelViewMatrix, newModelViewMatrix, [camera.x * -1.0, camera.y * -1.0, camera.z * -1.0]);  //Fourth transform: move object away from camera
-
         mat4.translate(newModelViewMatrix, newModelViewMatrix, [objects[object].x, objects[object].y, objects[object].z]);  //Third transform: move back from origin based on position
         mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].pitch, [1, 0, 0]); //Third transform: rotate around x based on object pitch
         mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].yaw, [0, 1, 0]);   //Second transform: rotate around y based on object yaw
         mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].roll, [0, 0, 1]);  //First transform: rotate around z based on object roll
+
+        //Compute new normals matrix
+        const newNormalMatrix = mat4.create();
+        mat4.invert(newNormalMatrix, newModelViewMatrix);
+        mat4.transpose(newNormalMatrix, newNormalMatrix);
+
+        //Compute new world view matrix
+        const newWorldViewMatrix = mat4.create();
+
+        mat4.rotate(newWorldViewMatrix, newWorldViewMatrix, camera.pitch, [1, 0, 0]);  //Sixth transform: rotate based on camera pitch
+        mat4.rotate(newWorldViewMatrix, newWorldViewMatrix, camera.yaw, [0, 1, 0]); //Fifth transform: rotate based on camera yaw
+        mat4.translate(newWorldViewMatrix, newWorldViewMatrix, [camera.x * -1.0, camera.y * -1.0, camera.z * -1.0]);  //Fourth transform: move object away from camera
 
         //Instruct WebGL how to pull out vertices
         ctx.bindBuffer(ctx.ARRAY_BUFFER, objects[object].model.buffers.vertex);
@@ -373,6 +510,11 @@ function drawScene(ctx, shaderProgramData, deltaT) {
         ctx.vertexAttribPointer(shaderProgramData.attributes.vertexColor, 4, ctx.FLOAT, false, 0, 0);
         ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexColor);
 
+        //Instruct WebGL how to pull out normals
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, objects[object].model.buffers.normal);
+        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexNormal, 3, ctx.FLOAT, false, 0, 0);
+        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexNormal);
+
         //Tell WebGl to use element array
         ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, objects[object].model.buffers.index);
 
@@ -382,6 +524,8 @@ function drawScene(ctx, shaderProgramData, deltaT) {
         //Set the uniforms
         ctx.uniformMatrix4fv(shaderProgramData.uniforms.projectionMatrix, false, newProjectionMatrix);
         ctx.uniformMatrix4fv(shaderProgramData.uniforms.modelViewMatrix, false, newModelViewMatrix);
+        ctx.uniformMatrix4fv(shaderProgramData.uniforms.worldViewMatrix, false, newWorldViewMatrix);
+        ctx.uniformMatrix4fv(shaderProgramData.uniforms.normalMatrix, false, newNormalMatrix);
 
         //Draw triangles
         ctx.drawElements(ctx.TRIANGLES, objects[object].model.indexCount, ctx.UNSIGNED_SHORT, 0);
