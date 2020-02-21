@@ -25,13 +25,69 @@ const fragmentShaderCode = `
     }
 `;
 
-var cubeRotation = 0.0;
+var models = {
+
+    pyramid: {
+    
+        vertexValues: [
+
+            //Bottom
+            -1.0, -1.0, 0.0,  1.0, -1.0, 0.0,
+            -1.0, 1.0, 0.0,
+        ],
+
+        colorValues: [
+
+            //Bottom white
+            1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0,
+        ],
+
+        indexValues: [
+
+            //Bottom
+            0, 1, 2,
+        ],
+
+        indexCount: 3,
+	},
+};
+
+var objectRotation = 0.0;
+
+//Camera object, contains data on camera position and angle
+var camera = {
+
+    x: 0.0, //Camera initialized at origin
+    y: 0.0,
+    z: 0.0,
+
+    roll: 0.0, //Camera facing forward (or something)
+    pitch: 0.0,
+    yaw: 0.0,
+
+    speed: 0.1,
+};
+
+//Mouse position, contains data on last mouse position relative to the canvas
+var lastMousePosition = {
+
+    inWindow: false,
+    x: 0,
+    y: 0,
+};
 
 //Main function, to be executed on load
 function main() {
 
     //Get canvas element
     const canvas = document.getElementById("canvas");
+
+    //Add mouse event listeners
+    canvas.addEventListener("mousemove", updateMouse);
+    canvas.addEventListener("mouseleave", mouseLeave);
+    window.addEventListener("keydown", parseKeys);
 
     //Get canvas context
     const ctx = canvas.getContext("webgl");
@@ -67,11 +123,14 @@ function main() {
         },
     };
 
-    //Create and fill buffers
-    const buffers = initBuffers(ctx);
+    //Create and fill buffers, attach them to their respective models
+    for (model in models) {
 
-    //Initialize cubeRotation to 0.0
-    cubeRotation = 0.0;
+        models[model].buffers = initBuffers(ctx, model);
+	}
+
+    //Initialize objectRotation to 0.0
+    objectRotation = 0.0;
 
     //Initialize previousTimestamp
     var previousTimeStamp = 0;
@@ -84,7 +143,7 @@ function main() {
         var deltaT = now - previousTimeStamp;
         previousTimeStamp = now;
 
-        drawScene(ctx, shaderProgramData, buffers, deltaT);
+        drawScene(ctx, shaderProgramData, deltaT);
 
         requestAnimationFrame(newFrame);
     }
@@ -142,122 +201,46 @@ function loadShader(ctx, type, code) {
     return newShader;
 }
 
-//Function to create and fill buffers
-function initBuffers(ctx) {
-
-
-    const pyramidVertices = [
-
-        //Bottom
-        -1.0, -1.0, 0.0,  1.0, -1.0, 0.0,
-        -1.0, 1.0, 0.0, 1.0, 1.0, 0.0,
-
-        //Left
-        -1.0, -1.0, 0.0,
-        -1.0, 1.0, 0.0,
-        0.0, 0.0, 1.5,
-
-        //Back
-        -1.0, 1.0, 0.0,
-        1.0, 1.0, 0.0,
-        0.0, 0.0, 1.5,
-
-        //Right
-        1.0, -1.0, 0.0,
-        1.0, 1.0, 0.0,
-        0.0, 0.0, 1.5,
-
-        //Front
-        -1.0, -1.0, 0.0,
-        1.0, -1.0, 0.0,
-        0.0, 0.0, 1.5,
-    ];
-
-    const pyramidColors = [
-
-        //Bottom white
-        1.0, 1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0, 1.0,
-
-        //Left red
-        1.0, 0.0, 0.0, 1.0,
-        1.0, 0.0, 0.0, 1.0,
-        1.0, 0.0, 0.0, 1.0,
-
-        //Back green
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-
-        //Right blue
-        0.0, 0.0, 1.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-
-        //Front purple
-        1.0, 0.0, 1.0, 1.0,
-        1.0, 0.0, 1.0, 1.0,
-        1.0, 0.0, 1.0, 1.0,
-    ];
-
-    const pyramidIndices = [
-
-        //Bottom
-        0, 1, 2,
-        1, 2, 3,
-
-        //Left
-        4, 5, 6,
-
-        //Back
-        7, 8, 9,
-
-        //Right
-        10, 11, 12,
-
-        //Front
-        13, 14, 15,
-    ];
+//Function to create and fill buffers and attach them to their respective models
+function initBuffers(ctx, model) {
 
     //Create pointer to a new buffer
-    const vertexBuffer = ctx.createBuffer();
+    var vertexBuffer = ctx.createBuffer();
 
     //Bind buffer to array buffer
     ctx.bindBuffer(ctx.ARRAY_BUFFER, vertexBuffer);
 
     //Pass in the vertex data
-    ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(pyramidVertices), ctx.STATIC_DRAW);
+    ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(models[model].vertexValues), ctx.STATIC_DRAW);
 
     //Create pointer to a new buffer
-    const colorBuffer = ctx.createBuffer();
+    var colorBuffer = ctx.createBuffer();
 
     //Bind buffer to array buffer
     ctx.bindBuffer(ctx.ARRAY_BUFFER, colorBuffer);
 
     //Pass in color data
-    ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(pyramidColors), ctx.STATIC_DRAW);
+    ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(models[model].colorValues), ctx.STATIC_DRAW);
 
     //Create pointer to a new buffer
-    const indexBuffer = ctx.createBuffer();
+    var indexBuffer = ctx.createBuffer();
 
     //Bind buffer to element array buffer
     ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
     //Pass in the index data
-    ctx.bufferData(ctx.ELEMENT_ARRAY_BUFFER, new Uint16Array(pyramidIndices), ctx.STATIC_DRAW);
+    ctx.bufferData(ctx.ELEMENT_ARRAY_BUFFER, new Uint16Array(models[model].indexValues), ctx.STATIC_DRAW);
 
     return {
 
         vertex: vertexBuffer,
         index: indexBuffer,
         color: colorBuffer,
-    }
+    };
 }
 
 //Function to draw a new scene
-function drawScene(ctx, shaderProgramData, buffers, deltaT) {
+function drawScene(ctx, shaderProgramData, deltaT) {
 
     ctx.canvas.width = ctx.canvas.clientWidth;   //Resize canvas to fit CSS styling
     ctx.canvas.height = ctx.canvas.clientHeight;
@@ -277,26 +260,29 @@ function drawScene(ctx, shaderProgramData, buffers, deltaT) {
     const newProjectionMatrix = mat4.create();
     mat4.perspective(newProjectionMatrix, 45 * Math.PI / 180, ctx.canvas.width / ctx.canvas.height, 0.1, 100.0);
 
-    //Compute new model view matrix, move square back by 6, and rotate around z axis and x axis based on cubeRotation
+    //Compute new model view matrix
     const newModelViewMatrix = mat4.create();
 
-    mat4.translate(newModelViewMatrix, newModelViewMatrix, [0.0, 0.0, -6.0]);
+    mat4.rotate(newModelViewMatrix, newModelViewMatrix, camera.pitch, [1, 0, 0]);  //Sixth transform: rotate based on camera pitch
+    mat4.rotate(newModelViewMatrix, newModelViewMatrix, camera.yaw, [0, 1, 0]); //Fifth transform: rotate based on camera yaw
+    mat4.translate(newModelViewMatrix, newModelViewMatrix, [camera.x, camera.y, camera.z]);  //Fourth transform: move object away from camera
 
-    mat4.rotate(newModelViewMatrix, newModelViewMatrix, cubeRotation, [1, 0, 0]);
-    mat4.rotate(newModelViewMatrix, newModelViewMatrix, cubeRotation * 4, [0, 0, 1]);
-    
+    mat4.translate(newModelViewMatrix, newModelViewMatrix, [0.0, 0.0, -6.0]);  //Third transform: move back from origin by -6
+    mat4.rotate(newModelViewMatrix, newModelViewMatrix, objectRotation, [1, 0, 0]); //Second transform: rotate around x
+    mat4.rotate(newModelViewMatrix, newModelViewMatrix, objectRotation * 4, [0, 0, 1]);  //First transform: rotate around z
+
     //Instruct WebGL how to pull out vertices
-    ctx.bindBuffer(ctx.ARRAY_BUFFER, buffers.vertex);
+    ctx.bindBuffer(ctx.ARRAY_BUFFER, models.pyramid.buffers.vertex);
     ctx.vertexAttribPointer(shaderProgramData.attributes.vertexPosition, 3, ctx.FLOAT, false, 0, 0);
     ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexPosition);
 
     //Instruct WebGL how to pull out colors
-    ctx.bindBuffer(ctx.ARRAY_BUFFER, buffers.color);
+    ctx.bindBuffer(ctx.ARRAY_BUFFER, models.pyramid.buffers.color);
     ctx.vertexAttribPointer(shaderProgramData.attributes.vertexColor, 4, ctx.FLOAT, false, 0, 0);
     ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexColor);
 
     //Tell WebGl to use element array
-    ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, buffers.index);
+    ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, models.pyramid.buffers.index);
 
     //Tell WebGL to use the shader program
     ctx.useProgram(shaderProgramData.program);
@@ -306,10 +292,109 @@ function drawScene(ctx, shaderProgramData, buffers, deltaT) {
     ctx.uniformMatrix4fv(shaderProgramData.uniforms.modelViewMatrix, false, newModelViewMatrix);
 
     //Draw triangles
-    ctx.drawElements(ctx.TRIANGLES, 18, ctx.UNSIGNED_SHORT, 0);
+    ctx.drawElements(ctx.TRIANGLES, models.pyramid.indexCount, ctx.UNSIGNED_SHORT, 0);
 
-    //Update cubeRotation for next draw
-    cubeRotation += deltaT;
+    //Update objectRotation for next draw
+    objectRotation += deltaT;
+}
+
+//Function to update mouse position on mouse move
+function updateMouse(event) {
+
+    //If the mouse is not in the window, record coordinates, set that it is in window, and return
+    if (!lastMousePosition.inWindow) {
+     
+        lastMousePosition.x = event.offsetX; //record x
+        lastMousePosition.y = event.offsetY; //record y
+        lastMousePosition.inWindow = true; //Set that mouse is in window
+
+        return;
+	}
+
+    //Record change in x and y
+    var deltaX = event.offsetX - lastMousePosition.x;
+    var deltaY = event.offsetY - lastMousePosition.y;
+
+    //Update mouse position
+    lastMousePosition.x = event.offsetX;
+    lastMousePosition.y = event.offsetY;
+
+    //Update camera angle
+    updatePitch(deltaY);
+    updateYaw(deltaX);
+}
+
+//Function to reset inwindow flag for mouse if mouse leaves
+function mouseLeave(event) {
+
+    lastMousePosition.inWindow = false;
+}
+
+//Function to update camera pitch based on change in Y
+function updatePitch(deltaY) {
+
+    camera.pitch += deltaY * 0.005;
+
+    //If pitch mod 2 pi is greater than pi / 2, set pitch to pi / 2
+
+    //If pitch mod 2 pi is less than - pi / 2, set pitch to pi / 2
+}
+
+//Function to update camera yaw based on change in X
+function updateYaw(deltaX) {
+
+    camera.yaw += deltaX * 0.005;
+}
+
+//Function to interpret keys to move camera around
+function parseKeys(event) {
+
+    console.log(event.code);
+
+    if (event.code == "KeyW") { //Forward
+    
+        moveForward();
+	}
+    else if (event.code == "KeyS") { //Backward
+    
+        moveBackward();
+	}
+    else if (event.code == "KeyA") { //Left
+    
+        moveLeft();
+	}
+    else if (event.code == "KeyD") { //Right
+    
+        moveRight();
+	}
+}
+
+//Function to move forward based on camera yaw
+function moveForward() {
+
+    camera.x -= camera.speed * Math.sin(camera.yaw);
+    camera.z += camera.speed * Math.cos(camera.yaw);
+}
+
+//Function to move backward based on camera yaw
+function moveBackward() {
+
+    camera.x += camera.speed * Math.sin(camera.yaw);
+    camera.z -= camera.speed * Math.cos(camera.yaw);
+}
+
+//Function to move left based on camera yaw
+function moveLeft() {
+
+    camera.x += camera.speed * Math.cos(camera.yaw);
+    camera.z += camera.speed * Math.sin(camera.yaw);
+}
+
+//Function to move right based on camera yaw
+function moveRight() {
+
+    camera.x -= camera.speed * Math.cos(camera.yaw);
+    camera.z -= camera.speed * Math.sin(camera.yaw);
 }
 
 window.onload = main;
