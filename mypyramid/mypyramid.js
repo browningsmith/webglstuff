@@ -148,6 +148,10 @@ var objects = {
         pitch: 0.0,
         yaw: 0.0,
 
+        rollSpeed: 0.0,
+        pitchSpeed: 0.0,
+        yawSpeed: 0.0,
+
         model: models.ground,
 	},
     
@@ -155,17 +159,36 @@ var objects = {
     
         x: 0.0,
         y: 0.0,
-        z: 0.0,
+        z: -6.0,
 
         roll: 0.0,
         pitch: 0.0,
         yaw: 0.0,
 
+        rollSpeed: 3.0,
+        pitchSpeed: 0.0,
+        yawSpeed: 0.0,
+
+        model: models.pyramid,
+    },
+    
+    pyramid2: {
+    
+        x: 0.0,
+        y: 0.0,
+        z: -3.0,
+
+        roll: 0.0,
+        pitch: 0.0,
+        yaw: Math.PI,
+
+        rollSpeed: 3.0,
+        pitchSpeed: 0.0,
+        yawSpeed: 0.0,
+
         model: models.pyramid,
 	},
 };
-
-var objectRotation = 0.0;
 
 //Camera object, contains data on camera position and angle
 var camera = {
@@ -380,9 +403,9 @@ function drawScene(ctx, shaderProgramData, deltaT) {
         mat4.translate(newModelViewMatrix, newModelViewMatrix, [camera.x, camera.y, camera.z]);  //Fourth transform: move object away from camera
 
         mat4.translate(newModelViewMatrix, newModelViewMatrix, [objects[object].x, objects[object].y, objects[object].z]);  //Third transform: move back from origin based on position
-        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].pitch, [1, 0, 0]); //Second transform: rotate around x
-        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].yaw, [0, 1, 0]);
-        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].roll, [0, 0, 1]);  //First transform: rotate around z
+        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].pitch, [1, 0, 0]); //Third transform: rotate around x based on object pitch
+        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].yaw, [0, 1, 0]);   //Second transform: rotate around y based on object yaw
+        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].roll, [0, 0, 1]);  //First transform: rotate around z based on object roll
 
         //Instruct WebGL how to pull out vertices
         ctx.bindBuffer(ctx.ARRAY_BUFFER, objects[object].model.buffers.vertex);
@@ -406,10 +429,20 @@ function drawScene(ctx, shaderProgramData, deltaT) {
 
         //Draw triangles
         ctx.drawElements(ctx.TRIANGLES, objects[object].model.indexCount, ctx.UNSIGNED_SHORT, 0);
-    }
 
-    //Update objectRotation for next draw
-    objectRotation += deltaT;
+        //Update rotation for next draw
+        updateObjectRotation(object, deltaT);
+    }
+}
+
+//Function to update an object's rotation
+function updateObjectRotation(object, deltaT) {
+
+    objects[object].pitch += objects[object].pitchSpeed * deltaT;
+    objects[object].roll += objects[object].rollSpeed * deltaT;
+    objects[object].yaw += objects[object].yawSpeed * deltaT;
+
+    console.log(objects[object].yaw);
 }
 
 //Function to update mouse position on mouse move
