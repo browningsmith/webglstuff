@@ -107,10 +107,50 @@ var models = {
 
         indexCount: 18,
 	},
+
+    ground: {
+    
+        vertexValues: [
+        
+            -200.0, -1.5, -200.0,
+            -200.0, -1.5, 200.0,
+            200.0, -1.5, -200.0,
+            200.0, -1.5, 200.0,
+        ],
+
+        colorValues: [
+        
+            0.0, 0.5, 0.0, 1.0,
+            0.0, 0.5, 0.0, 1.0,
+            0.0, 0.5, 0.0, 1.0,
+            0.0, 0.5, 0.0, 1.0,
+        ],
+
+        indexValues: [
+        
+            0, 1, 2,
+            1, 2, 3,
+        ],
+
+        indexCount: 6,
+	},
 };
 
 var objects = {
 
+    ground: {
+    
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+
+        roll: 0.0,
+        pitch: 0.0,
+        yaw: 0.0,
+
+        model: models.ground,
+	},
+    
     pyramid: {
     
         x: 0.0,
@@ -171,7 +211,7 @@ function main() {
     }
 
     //Clear the canvas
-    ctx.clearColor(0.0, 0.0, 0.0, 1.0); //set clear color to black
+    ctx.clearColor(0.3984375, 1.0, 1.0, 1.0); //set clear color to black
     ctx.clearDepth(1.0); //set clear depth to 1.0
     ctx.clear(ctx.COLOR_BUFFER_BIT, ctx.DEPTH_BUFFER_BIT);
 
@@ -319,7 +359,7 @@ function drawScene(ctx, shaderProgramData, deltaT) {
     ctx.viewport(0, 0, ctx.canvas.width, ctx.canvas.height); //Resize viewport
 
     //Clear the canvas
-    ctx.clearColor(0.0, 0.0, 0.0, 1.0); //set clear color to black
+    ctx.clearColor(0.3984375, 1.0, 1.0, 1.0); //set clear color to black
     ctx.clearDepth(1.0); //set clear depth to 1.0
     ctx.clear(ctx.COLOR_BUFFER_BIT, ctx.DEPTH_BUFFER_BIT);
 
