@@ -107,25 +107,88 @@ var models = {
 
         indexCount: 18,
 	},
+
+    ground: {
+    
+        vertexValues: [
+        
+            -200.0, -1.5, -200.0,
+            -200.0, -1.5, 200.0,
+            200.0, -1.5, -200.0,
+            200.0, -1.5, 200.0,
+        ],
+
+        colorValues: [
+        
+            0.0, 0.5, 0.0, 1.0,
+            0.0, 0.5, 0.0, 1.0,
+            0.0, 0.5, 0.0, 1.0,
+            0.0, 0.5, 0.0, 1.0,
+        ],
+
+        indexValues: [
+        
+            0, 1, 2,
+            1, 2, 3,
+        ],
+
+        indexCount: 6,
+	},
 };
 
 var objects = {
 
+    ground: {
+    
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+
+        roll: 0.0,
+        pitch: 0.0,
+        yaw: 0.0,
+
+        rollSpeed: 0.0,
+        pitchSpeed: 0.0,
+        yawSpeed: 0.0,
+
+        model: models.ground,
+	},
+    
     pyramid: {
     
-        x: 0.0;
-        y: 0.0;
-        z: 0.0;
+        x: 0.0,
+        y: 0.0,
+        z: -6.0,
 
-        roll: 0.0;
-        pitch: 0.0;
-        yaw: 0.0;
+        roll: 0.0,
+        pitch: 0.0,
+        yaw: 0.0,
 
-        model: models.pyramid;
+        rollSpeed: 3.0,
+        pitchSpeed: 0.0,
+        yawSpeed: 0.0,
+
+        model: models.pyramid,
+    },
+    
+    pyramid2: {
+    
+        x: 0.0,
+        y: 0.0,
+        z: -3.0,
+
+        roll: 0.0,
+        pitch: 0.0,
+        yaw: Math.PI,
+
+        rollSpeed: 3.0,
+        pitchSpeed: 0.0,
+        yawSpeed: 0.0,
+
+        model: models.pyramid,
 	},
 };
-
-var objectRotation = 0.0;
 
 //Camera object, contains data on camera position and angle
 var camera = {
@@ -171,7 +234,7 @@ function main() {
     }
 
     //Clear the canvas
-    ctx.clearColor(0.0, 0.0, 0.0, 1.0); //set clear color to black
+    ctx.clearColor(0.3984375, 1.0, 1.0, 1.0); //set clear color to black
     ctx.clearDepth(1.0); //set clear depth to 1.0
     ctx.clear(ctx.COLOR_BUFFER_BIT, ctx.DEPTH_BUFFER_BIT);
 
@@ -319,7 +382,7 @@ function drawScene(ctx, shaderProgramData, deltaT) {
     ctx.viewport(0, 0, ctx.canvas.width, ctx.canvas.height); //Resize viewport
 
     //Clear the canvas
-    ctx.clearColor(0.0, 0.0, 0.0, 1.0); //set clear color to black
+    ctx.clearColor(0.3984375, 1.0, 1.0, 1.0); //set clear color to black
     ctx.clearDepth(1.0); //set clear depth to 1.0
     ctx.clear(ctx.COLOR_BUFFER_BIT, ctx.DEPTH_BUFFER_BIT);
 
@@ -327,46 +390,59 @@ function drawScene(ctx, shaderProgramData, deltaT) {
     ctx.enable(ctx.DEPTH_TEST);
     ctx.depthFunc(ctx.LEQUAL);
 
-    //Compute new projection matrix
-    const newProjectionMatrix = mat4.create();
-    mat4.perspective(newProjectionMatrix, 45 * Math.PI / 180, ctx.canvas.width / ctx.canvas.height, 0.1, 100.0);
+    for (object in objects) {
+        //Compute new projection matrix
+        const newProjectionMatrix = mat4.create();
+        mat4.perspective(newProjectionMatrix, 45 * Math.PI / 180, ctx.canvas.width / ctx.canvas.height, 0.1, 100.0);
 
-    //Compute new model view matrix
-    const newModelViewMatrix = mat4.create();
+        //Compute new model view matrix
+        const newModelViewMatrix = mat4.create();
 
-    mat4.rotate(newModelViewMatrix, newModelViewMatrix, camera.pitch, [1, 0, 0]);  //Sixth transform: rotate based on camera pitch
-    mat4.rotate(newModelViewMatrix, newModelViewMatrix, camera.yaw, [0, 1, 0]); //Fifth transform: rotate based on camera yaw
-    mat4.translate(newModelViewMatrix, newModelViewMatrix, [camera.x, camera.y, camera.z]);  //Fourth transform: move object away from camera
+        mat4.rotate(newModelViewMatrix, newModelViewMatrix, camera.pitch, [1, 0, 0]);  //Sixth transform: rotate based on camera pitch
+        mat4.rotate(newModelViewMatrix, newModelViewMatrix, camera.yaw, [0, 1, 0]); //Fifth transform: rotate based on camera yaw
+        mat4.translate(newModelViewMatrix, newModelViewMatrix, [camera.x, camera.y, camera.z]);  //Fourth transform: move object away from camera
 
-    mat4.translate(newModelViewMatrix, newModelViewMatrix, [0.0, 0.0, -6.0]);  //Third transform: move back from origin by -6
-    mat4.rotate(newModelViewMatrix, newModelViewMatrix, objectRotation, [1, 0, 0]); //Second transform: rotate around x
-    mat4.rotate(newModelViewMatrix, newModelViewMatrix, objectRotation * 4, [0, 0, 1]);  //First transform: rotate around z
+        mat4.translate(newModelViewMatrix, newModelViewMatrix, [objects[object].x, objects[object].y, objects[object].z]);  //Third transform: move back from origin based on position
+        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].pitch, [1, 0, 0]); //Third transform: rotate around x based on object pitch
+        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].yaw, [0, 1, 0]);   //Second transform: rotate around y based on object yaw
+        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].roll, [0, 0, 1]);  //First transform: rotate around z based on object roll
 
-    //Instruct WebGL how to pull out vertices
-    ctx.bindBuffer(ctx.ARRAY_BUFFER, models.pyramid.buffers.vertex);
-    ctx.vertexAttribPointer(shaderProgramData.attributes.vertexPosition, 3, ctx.FLOAT, false, 0, 0);
-    ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexPosition);
+        //Instruct WebGL how to pull out vertices
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, objects[object].model.buffers.vertex);
+        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexPosition, 3, ctx.FLOAT, false, 0, 0);
+        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexPosition);
 
-    //Instruct WebGL how to pull out colors
-    ctx.bindBuffer(ctx.ARRAY_BUFFER, models.pyramid.buffers.color);
-    ctx.vertexAttribPointer(shaderProgramData.attributes.vertexColor, 4, ctx.FLOAT, false, 0, 0);
-    ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexColor);
+        //Instruct WebGL how to pull out colors
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, objects[object].model.buffers.color);
+        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexColor, 4, ctx.FLOAT, false, 0, 0);
+        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexColor);
 
-    //Tell WebGl to use element array
-    ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, models.pyramid.buffers.index);
+        //Tell WebGl to use element array
+        ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, objects[object].model.buffers.index);
 
-    //Tell WebGL to use the shader program
-    ctx.useProgram(shaderProgramData.program);
+        //Tell WebGL to use the shader program
+        ctx.useProgram(shaderProgramData.program);
 
-    //Set the uniforms
-    ctx.uniformMatrix4fv(shaderProgramData.uniforms.projectionMatrix, false, newProjectionMatrix);
-    ctx.uniformMatrix4fv(shaderProgramData.uniforms.modelViewMatrix, false, newModelViewMatrix);
+        //Set the uniforms
+        ctx.uniformMatrix4fv(shaderProgramData.uniforms.projectionMatrix, false, newProjectionMatrix);
+        ctx.uniformMatrix4fv(shaderProgramData.uniforms.modelViewMatrix, false, newModelViewMatrix);
 
-    //Draw triangles
-    ctx.drawElements(ctx.TRIANGLES, models.pyramid.indexCount, ctx.UNSIGNED_SHORT, 0);
+        //Draw triangles
+        ctx.drawElements(ctx.TRIANGLES, objects[object].model.indexCount, ctx.UNSIGNED_SHORT, 0);
 
-    //Update objectRotation for next draw
-    objectRotation += deltaT;
+        //Update rotation for next draw
+        updateObjectRotation(object, deltaT);
+    }
+}
+
+//Function to update an object's rotation
+function updateObjectRotation(object, deltaT) {
+
+    objects[object].pitch += objects[object].pitchSpeed * deltaT;
+    objects[object].roll += objects[object].rollSpeed * deltaT;
+    objects[object].yaw += objects[object].yawSpeed * deltaT;
+
+    console.log(objects[object].yaw);
 }
 
 //Function to update mouse position on mouse move
@@ -406,9 +482,17 @@ function updatePitch(deltaY) {
 
     camera.pitch += deltaY * 0.005;
 
-    //If pitch mod 2 pi is greater than pi / 2, set pitch to pi / 2
+    //If pitch is greater than pi / 2, set pitch to pi / 2
+    if (camera.pitch > Math.PI / 2) {
+    
+        camera.pitch = Math.PI / 2;
+	}
 
-    //If pitch mod 2 pi is less than - pi / 2, set pitch to pi / 2
+    //If pitch is less than - pi / 2, set pitch to - pi / 2
+    if (camera.pitch < Math.PI / -2) {
+    
+        camera.pitch = Math.PI / -2;
+	}
 }
 
 //Function to update camera yaw based on change in X
