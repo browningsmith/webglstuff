@@ -449,9 +449,17 @@ function updatePitch(deltaY) {
 
     camera.pitch += deltaY * 0.005;
 
-    //If pitch mod 2 pi is greater than pi / 2, set pitch to pi / 2
+    //If pitch is greater than pi / 2, set pitch to pi / 2
+    if (camera.pitch > Math.PI / 2) {
+    
+        camera.pitch = Math.PI / 2;
+	}
 
-    //If pitch mod 2 pi is less than - pi / 2, set pitch to pi / 2
+    //If pitch is less than - pi / 2, set pitch to - pi / 2
+    if (camera.pitch < Math.PI / -2) {
+    
+        camera.pitch = Math.PI / -2;
+	}
 }
 
 //Function to update camera yaw based on change in X
