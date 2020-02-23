@@ -17,10 +17,10 @@ const vertexShaderCode = `
         gl_Position = u_projectionMatrix * u_worldViewMatrix * u_modelViewMatrix * a_vertexPosition;
         v_currentColor = a_vertexColor;
         
-        highp vec3 ambientLight = vec3(0.3, 0.3, 0.3); //Set ambientLight to 0.3 rgb
+        highp vec3 ambientLight = vec3(0.4, 0.4, 0.4); //Set ambientLight to 0.3 rgb
         highp vec3 directionalLightColor = vec3(1.0, 1.0, 1.0); //Set directional light color to white
 
-        highp vec3 lightDirection = normalize(vec3(3.0, 0.0, 0.0)); //Set light direction vector
+        highp vec3 lightDirection = normalize(vec3(1.0, 1.0, 1.0)); //Set light direction vector
 
         highp vec4 transformedNormal = u_normalMatrix * vec4(a_vertexNormal, 1.0); //Compute new normals based on cube rotation
 
@@ -273,7 +273,7 @@ var camera = {
     pitch: 0.0,
     yaw: 0.0,
 
-    speed: 0.1,
+    speed: 0.2,
 };
 
 //Mouse position, contains data on last mouse position relative to the canvas
