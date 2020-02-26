@@ -271,12 +271,9 @@ var camera = {
 
     //Normal vectors representing right, left, and forward for the camera.
     //Camera is initialized facing negative Z
-    rightVec: vec3.fromValues(-1.0, 0.0, 0.0),
+    rightVec: vec3.fromValues(1.0, 0.0, 0.0),
     upVec: vec3.fromValues(0.0, 1.0, 0.0),
     forwardVec: vec3.fromValues(0.0, 0.0, -1.0),
-
-    //Initial roll angle: the angle we need to roll the camera before performing lookAt
-    rollAngle: 0.0,
 
     speed: 0.2,
 };
@@ -469,7 +466,7 @@ function drawScene(ctx, shaderProgramData, deltaT) {
     ctx.canvas.width = ctx.canvas.clientWidth;   //Resize canvas to fit CSS styling
     ctx.canvas.height = ctx.canvas.clientHeight;
 
-    ctx.viewport(0, 0, ctx.canvas.width, ctx.canvas.height); //Resize viewport
+    ctx.viewport(0, 0, ctx.canvas.width / 2.0, ctx.canvas.height); //Resize viewport
 
     //Clear the canvas
     ctx.clearColor(0.3984375, 1.0, 1.0, 1.0); //set clear color to black
@@ -480,10 +477,58 @@ function drawScene(ctx, shaderProgramData, deltaT) {
     ctx.enable(ctx.DEPTH_TEST);
     ctx.depthFunc(ctx.LEQUAL);
 
+    //Compute new projection matrix
+    const newProjectionMatrix = mat4.create();
+    mat4.perspective(newProjectionMatrix, 45 * Math.PI / 180, ctx.canvas.width / 2.0 / ctx.canvas.height, 0.1, 100.0);
+
+    //Compute world view matrix
+    var newWorldViewMatrix = mat4.create();
+
+    //Draw a cube where the camera should be
+    {
+    
+        //Compute new camera view matrix
+        const cameraViewMatrix = mat4.create();
+        mat4.translate(cameraViewMatrix, cameraViewMatrix, [camera.x, camera.y, camera.z]);
+        mat4.scale(cameraViewMatrix, cameraViewMatrix, [0.25, 0.25, 0.25]);
+
+        //Compute normals matrix for camera shape
+        const cameraNormalMatrix = mat4.create();
+        mat4.invert(cameraNormalMatrix, cameraViewMatrix);
+        mat4.transpose(cameraNormalMatrix, cameraNormalMatrix);
+
+        //Instruct WebGL how to pull out vertices
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, models.cube.buffers.vertex);
+        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexPosition, 3, ctx.FLOAT, false, 0, 0);
+        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexPosition);
+
+        //Instruct WebGL how to pull out colors
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, models.cube.buffers.color);
+        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexColor, 4, ctx.FLOAT, false, 0, 0);
+        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexColor);
+
+        //Instruct WebGL how to pull out normals
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, models.cube.buffers.normal);
+        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexNormal, 3, ctx.FLOAT, false, 0, 0);
+        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexNormal);
+
+        //Tell WebGl to use element array
+        ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, models.cube.buffers.index);
+
+        //Tell WebGL to use the shader program
+        ctx.useProgram(shaderProgramData.program);
+
+        //Set the uniforms
+        ctx.uniformMatrix4fv(shaderProgramData.uniforms.projectionMatrix, false, newProjectionMatrix);
+        ctx.uniformMatrix4fv(shaderProgramData.uniforms.modelViewMatrix, false, cameraViewMatrix);
+        ctx.uniformMatrix4fv(shaderProgramData.uniforms.worldViewMatrix, false, newWorldViewMatrix);
+        ctx.uniformMatrix4fv(shaderProgramData.uniforms.normalMatrix, false, cameraNormalMatrix);
+
+        //Draw triangles
+        ctx.drawElements(ctx.TRIANGLES, models.cube.indexCount, ctx.UNSIGNED_SHORT, 0);
+	}
+
     for (object in objects) {
-        //Compute new projection matrix
-        const newProjectionMatrix = mat4.create();
-        mat4.perspective(newProjectionMatrix, 45 * Math.PI / 180, ctx.canvas.width / ctx.canvas.height, 0.1, 100.0);
 
         //Compute new model view matrix
         const newModelViewMatrix = mat4.create();
@@ -498,8 +543,60 @@ function drawScene(ctx, shaderProgramData, deltaT) {
         mat4.invert(newNormalMatrix, newModelViewMatrix);
         mat4.transpose(newNormalMatrix, newNormalMatrix);
 
-        //Compute world view matrix
-        const newWorldViewMatrix = mat4.create();
+        //Instruct WebGL how to pull out vertices
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, objects[object].model.buffers.vertex);
+        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexPosition, 3, ctx.FLOAT, false, 0, 0);
+        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexPosition);
+
+        //Instruct WebGL how to pull out colors
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, objects[object].model.buffers.color);
+        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexColor, 4, ctx.FLOAT, false, 0, 0);
+        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexColor);
+
+        //Instruct WebGL how to pull out normals
+        ctx.bindBuffer(ctx.ARRAY_BUFFER, objects[object].model.buffers.normal);
+        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexNormal, 3, ctx.FLOAT, false, 0, 0);
+        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexNormal);
+
+        //Tell WebGl to use element array
+        ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, objects[object].model.buffers.index);
+
+        //Tell WebGL to use the shader program
+        ctx.useProgram(shaderProgramData.program);
+
+        //Set the uniforms
+        ctx.uniformMatrix4fv(shaderProgramData.uniforms.projectionMatrix, false, newProjectionMatrix);
+        ctx.uniformMatrix4fv(shaderProgramData.uniforms.modelViewMatrix, false, newModelViewMatrix);
+        ctx.uniformMatrix4fv(shaderProgramData.uniforms.worldViewMatrix, false, newWorldViewMatrix);
+        ctx.uniformMatrix4fv(shaderProgramData.uniforms.normalMatrix, false, newNormalMatrix);
+
+        //Draw triangles
+        ctx.drawElements(ctx.TRIANGLES, objects[object].model.indexCount, ctx.UNSIGNED_SHORT, 0);
+
+        //Update rotation for next draw
+        //updateObjectRotation(object, deltaT);
+    }
+
+    ctx.viewport(ctx.canvas.width / 2.0, 0, ctx.canvas.width / 2.0, ctx.canvas.height); //Resize viewport again for other side
+
+    //Compute worldViewMatrix based on opposite coordinates of camera position
+    newWorldViewMatrix = mat4.create();
+    mat4.translate(newWorldViewMatrix, newWorldViewMatrix, [camera.x * -1.0, camera.y * -1.0, camera.z * -1.0]);
+
+    for (object in objects) {
+
+        //Compute new model view matrix
+        const newModelViewMatrix = mat4.create();
+
+        mat4.translate(newModelViewMatrix, newModelViewMatrix, [objects[object].x, objects[object].y, objects[object].z]);  //Fourth transform: move back from origin based on position
+        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].pitch, [1, 0, 0]); //Third transform: rotate around x based on object pitch
+        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].yaw, [0, 1, 0]);   //Second transform: rotate around y based on object yaw
+        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].roll, [0, 0, 1]);  //First transform: rotate around z based on object roll
+
+        //Compute new normals matrix
+        const newNormalMatrix = mat4.create();
+        mat4.invert(newNormalMatrix, newModelViewMatrix);
+        mat4.transpose(newNormalMatrix, newNormalMatrix);
 
         //Instruct WebGL how to pull out vertices
         ctx.bindBuffer(ctx.ARRAY_BUFFER, objects[object].model.buffers.vertex);
@@ -579,44 +676,52 @@ function parseKeys(event) {
 
     if (event.code == "KeyW") { //Forward
     
-        moveForward();
+        moveForward(camera.speed);
 	}
     else if (event.code == "KeyS") { //Backward
     
-        moveBackward();
+        moveForward(camera.speed * -1.0);
 	}
     else if (event.code == "KeyA") { //Left
     
-        moveLeft();
+        moveRight(camera.speed * -1.0);
 	}
     else if (event.code == "KeyD") { //Right
     
-        moveRight();
+        moveRight(camera.speed);
+	}
+    else if (event.code == "Space") { //Right
+    
+        moveUp(camera.speed);
+	}
+    else if (event.code == "ShiftLeft") { //Right
+    
+        moveUp(camera.speed * -1.0);
 	}
 }
 
-//Function to move forward based on camera yaw
-function moveForward() {
+//Function to move forward based on camera directional vectors
+function moveForward(speed) {
 
-    
+    camera.x += camera.forwardVec[0] * speed;
+    camera.y += camera.forwardVec[1] * speed;
+    camera.z += camera.forwardVec[2] * speed;
 }
 
-//Function to move backward based on camera yaw
-function moveBackward() {
+//Function to move right based on camera directional vectors
+function moveRight(speed) {
 
-    
+    camera.x += camera.rightVec[0] * speed;
+    camera.y += camera.rightVec[1] * speed;
+    camera.z += camera.rightVec[2] * speed;
 }
 
-//Function to move left based on camera yaw
-function moveLeft() {
+//Function to move up based on camera directional vectors
+function moveUp(speed) {
 
-    
-}
-
-//Function to move right based on camera yaw
-function moveRight() {
-
-    
+    camera.x += camera.upVec[0] * speed;
+    camera.y += camera.upVec[1] * speed;
+    camera.z += camera.upVec[2] * speed;
 }
 
 window.onload = main;
