@@ -269,9 +269,14 @@ var camera = {
     y: 0.0,
     z: 0.0,
 
-    roll: 0.0, //Camera facing forward (or something)
-    pitch: 0.0,
-    yaw: 0.0,
+    //Normal vectors representing right, left, and forward for the camera.
+    //Camera is initialized facing negative Z
+    rightVec: vec3.fromValues(-1.0, 0.0, 0.0),
+    upVec: vec3.fromValues(0.0, 1.0, 0.0),
+    forwardVec: vec3.fromValues(0.0, 0.0, -1.0),
+
+    //Initial roll angle: the angle we need to roll the camera before performing lookAt
+    rollAngle: 0.0,
 
     speed: 0.2,
 };
@@ -493,12 +498,8 @@ function drawScene(ctx, shaderProgramData, deltaT) {
         mat4.invert(newNormalMatrix, newModelViewMatrix);
         mat4.transpose(newNormalMatrix, newNormalMatrix);
 
-        //Compute new world view matrix
+        //Compute world view matrix
         const newWorldViewMatrix = mat4.create();
-
-        mat4.rotate(newWorldViewMatrix, newWorldViewMatrix, camera.pitch, [1, 0, 0]);  //Third transform: rotate based on camera pitch
-        mat4.rotate(newWorldViewMatrix, newWorldViewMatrix, camera.yaw, [0, 1, 0]); //Second transform: rotate based on camera yaw
-        mat4.translate(newWorldViewMatrix, newWorldViewMatrix, [camera.x * -1.0, camera.y * -1.0, camera.z * -1.0]);  //First transform: move object away from camera
 
         //Instruct WebGL how to pull out vertices
         ctx.bindBuffer(ctx.ARRAY_BUFFER, objects[object].model.buffers.vertex);
@@ -563,40 +564,12 @@ function updateMouse(event) {
     //Update mouse position
     lastMousePosition.x = event.offsetX;
     lastMousePosition.y = event.offsetY;
-
-    //Update camera angle
-    updatePitch(deltaY);
-    updateYaw(deltaX);
 }
 
 //Function to reset inwindow flag for mouse if mouse leaves
 function mouseLeave(event) {
 
     lastMousePosition.inWindow = false;
-}
-
-//Function to update camera pitch based on change in Y
-function updatePitch(deltaY) {
-
-    camera.pitch += deltaY * 0.005;
-
-    //If pitch is greater than pi / 2, set pitch to pi / 2
-    if (camera.pitch > Math.PI / 2) {
-    
-        camera.pitch = Math.PI / 2;
-	}
-
-    //If pitch is less than - pi / 2, set pitch to - pi / 2
-    if (camera.pitch < Math.PI / -2) {
-    
-        camera.pitch = Math.PI / -2;
-	}
-}
-
-//Function to update camera yaw based on change in X
-function updateYaw(deltaX) {
-
-    camera.yaw += deltaX * 0.005;
 }
 
 //Function to interpret keys to move camera around
@@ -625,29 +598,25 @@ function parseKeys(event) {
 //Function to move forward based on camera yaw
 function moveForward() {
 
-    camera.x += camera.speed * Math.sin(camera.yaw);
-    camera.z -= camera.speed * Math.cos(camera.yaw);
+    
 }
 
 //Function to move backward based on camera yaw
 function moveBackward() {
 
-    camera.x -= camera.speed * Math.sin(camera.yaw);
-    camera.z += camera.speed * Math.cos(camera.yaw);
+    
 }
 
 //Function to move left based on camera yaw
 function moveLeft() {
 
-    camera.x -= camera.speed * Math.cos(camera.yaw);
-    camera.z -= camera.speed * Math.sin(camera.yaw);
+    
 }
 
 //Function to move right based on camera yaw
 function moveRight() {
 
-    camera.x += camera.speed * Math.cos(camera.yaw);
-    camera.z += camera.speed * Math.sin(camera.yaw);
+    
 }
 
 window.onload = main;
