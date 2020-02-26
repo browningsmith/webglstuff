@@ -275,6 +275,9 @@ var camera = {
     upVec: vec3.fromValues(0.0, 1.0, 0.0),
     forwardVec: vec3.fromValues(0.0, 0.0, -1.0),
 
+    //Camera rotation matrix, needs to be recomputed on each roll, pitch, or yaw update
+    rotationMatrix: mat4.create(),
+
     speed: 0.2,
 };
 
@@ -483,14 +486,16 @@ function drawScene(ctx, shaderProgramData, deltaT) {
 
     //Compute world view matrix
     var newWorldViewMatrix = mat4.create();
+    mat4.translate(newWorldViewMatrix, newWorldViewMatrix, [0.0, 0.0, -12.0]);
 
     //Draw a cube where the camera should be
     {
     
         //Compute new camera view matrix
         const cameraViewMatrix = mat4.create();
-        mat4.translate(cameraViewMatrix, cameraViewMatrix, [camera.x, camera.y, camera.z]);
-        mat4.scale(cameraViewMatrix, cameraViewMatrix, [0.25, 0.25, 0.25]);
+        mat4.translate(cameraViewMatrix, cameraViewMatrix, [camera.x, camera.y, camera.z]); //Third transform, translate based on camera position
+        mat4.multiply(cameraViewMatrix, cameraViewMatrix, camera.rotationMatrix); //Second transform, Rotate based on camera rotation matrix
+        mat4.scale(cameraViewMatrix, cameraViewMatrix, [0.25, 0.25, 0.25]); //First transform, shrink cube to be smaller
 
         //Compute normals matrix for camera shape
         const cameraNormalMatrix = mat4.create();
@@ -580,8 +585,8 @@ function drawScene(ctx, shaderProgramData, deltaT) {
     ctx.viewport(ctx.canvas.width / 2.0, 0, ctx.canvas.width / 2.0, ctx.canvas.height); //Resize viewport again for other side
 
     //Compute worldViewMatrix based on opposite coordinates of camera position
-    newWorldViewMatrix = mat4.create();
-    mat4.translate(newWorldViewMatrix, newWorldViewMatrix, [camera.x * -1.0, camera.y * -1.0, camera.z * -1.0]);
+    newWorldViewMatrix = mat4.clone(camera.rotationMatrix);
+    mat4.translate(newWorldViewMatrix, newWorldViewMatrix, [camera.x * -1.0, camera.y * -1.0, camera.z * -1.0]); //Second transform, move objects away from camera
 
     for (object in objects) {
 
@@ -661,6 +666,9 @@ function updateMouse(event) {
     //Update mouse position
     lastMousePosition.x = event.offsetX;
     lastMousePosition.y = event.offsetY;
+
+    //Yaw and pitch based on change in x and y
+
 }
 
 //Function to reset inwindow flag for mouse if mouse leaves
@@ -672,7 +680,7 @@ function mouseLeave(event) {
 //Function to interpret keys to move camera around
 function parseKeys(event) {
 
-    //console.log(event.code);
+    console.log(event.code);
 
     if (event.code == "KeyW") { //Forward
     
@@ -697,7 +705,81 @@ function parseKeys(event) {
     else if (event.code == "ShiftLeft") { //Right
     
         moveUp(camera.speed * -1.0);
-	}
+    }
+    else if (event.code == "KeyQ") { //Right
+    
+        rollRight(-0.05);
+    }
+    else if (event.code == "KeyE") { //Right
+    
+        rollRight(0.05);
+    }
+}
+
+//Function to roll the camera around it's local z vector
+function rollRight(angle) {
+
+    //Create a quaternion representing rotation around forwardVec by negative angle
+    const rollQuat = quat.create();
+    quat.setAxisAngle(rollQuat, camera.forwardVec, angle * -1.0);
+
+    //Create a new rotation matrix with roll quaternion and no translation
+    const rollMatrix = mat4.create();
+    mat4.fromRotationTranslation(rollMatrix, rollQuat, [0.0, 0.0, 0.0]);
+
+    //Apply this matrix to the camera's view matrix
+    mat4.multiply(camera.rotationMatrix, camera.rotationMatrix, rollMatrix);
+
+    //Now set the quaternion using the positive angle
+    quat.setAxisAngle(rollQuat, camera.forwardVec, angle);
+
+    //Apply this rotation to camera's rightVec and upVec
+    vec3.transformQuat(camera.rightVec, camera.rightVec, rollQuat);
+    vec3.transformQuat(camera.upVec, camera.upVec, rollQuat);
+}
+
+//Function to pitch the camera around it's local x vector
+function pitchUp(angle) {
+
+    //Create a quaternion representing rotation around rightVec by negative angle
+    const pitchQuat = quat.create();
+    quat.setAxisAngle(pitchQuat, camera.rightVec, angle * -1.0);
+
+    //Create a new rotation matrix with roll quaternion and no translation
+    const pitchMatrix = mat4.create();
+    mat4.fromRotationTranslation(pitchMatrix, pitchQuat, [0.0, 0.0, 0.0]);
+
+    //Apply this matrix to the camera's view matrix
+    mat4.multiply(camera.rotationMatrix, camera.rotationMatrix, pitchMatrix);
+
+    //Now set the quaternion using the positive angle
+    quat.setAxisAngle(pitchQuat, camera.rightVec, angle);
+
+    //Apply this rotation to camera's upVec and forwardVec
+    vec3.transformQuat(camera.upVec, camera.upVec, pitchQuat);
+    vec3.transformQuat(camera.forwardVec, camera.forwardVec, pitchQuat);
+}
+
+//Function to yaw the camera around it's local y vector
+function yawRight(angle) {
+
+    //Create a quaternion representing rotation around upVec by negative angle
+    const yawQuat = quat.create();
+    quat.setAxisAngle(yawQuat, camera.upVec, angle * -1.0);
+
+    //Create a new rotation matrix with roll quaternion and no translation
+    const yawMatrix = mat4.create();
+    mat4.fromRotationTranslation(yawMatrix, yawQuat, [0.0, 0.0, 0.0]);
+
+    //Apply this matrix to the camera's view matrix
+    mat4.multiply(camera.rotationMatrix, camera.rotationMatrix, yawMatrix);
+
+    //Now set the quaternion using the positive angle
+    quat.setAxisAngle(yawQuat, camera.upVec, angle);
+
+    //Apply this rotation to camera's rightVec and forwardVec
+    vec3.transformQuat(camera.rightVec, camera.rightVec, yawQuat);
+    vec3.transformQuat(camera.forwardVec, camera.forwardVec, yawQuat);
 }
 
 //Function to move forward based on camera directional vectors
