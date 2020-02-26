@@ -469,10 +469,10 @@ function drawScene(ctx, shaderProgramData, deltaT) {
     ctx.canvas.width = ctx.canvas.clientWidth;   //Resize canvas to fit CSS styling
     ctx.canvas.height = ctx.canvas.clientHeight;
 
-    ctx.viewport(0, 0, ctx.canvas.width / 2.0, ctx.canvas.height); //Resize viewport
+    ctx.viewport(0, 0, ctx.canvas.width, ctx.canvas.height); //Resize viewport
 
     //Clear the canvas
-    ctx.clearColor(0.3984375, 1.0, 1.0, 1.0); //set clear color to black
+    ctx.clearColor(0.0, 0.0, 0.0, 1.0); //set clear color to black
     ctx.clearDepth(1.0); //set clear depth to 1.0
     ctx.clear(ctx.COLOR_BUFFER_BIT, ctx.DEPTH_BUFFER_BIT);
 
@@ -482,110 +482,10 @@ function drawScene(ctx, shaderProgramData, deltaT) {
 
     //Compute new projection matrix
     const newProjectionMatrix = mat4.create();
-    mat4.perspective(newProjectionMatrix, 45 * Math.PI / 180, ctx.canvas.width / 2.0 / ctx.canvas.height, 0.1, 100.0);
+    mat4.perspective(newProjectionMatrix, 45 * Math.PI / 180, ctx.canvas.width / ctx.canvas.height, 0.1, 1000.0);
 
-    //Compute world view matrix
-    var newWorldViewMatrix = mat4.create();
-    mat4.translate(newWorldViewMatrix, newWorldViewMatrix, [0.0, 0.0, -12.0]);
-
-    //Draw a cube where the camera should be
-    {
-    
-        //Compute new camera view matrix
-        const cameraViewMatrix = mat4.create();
-        mat4.translate(cameraViewMatrix, cameraViewMatrix, [camera.x, camera.y, camera.z]); //Third transform, translate based on camera position
-        mat4.multiply(cameraViewMatrix, cameraViewMatrix, camera.rotationMatrix); //Second transform, Rotate based on camera rotation matrix
-        mat4.scale(cameraViewMatrix, cameraViewMatrix, [0.25, 0.25, 0.25]); //First transform, shrink cube to be smaller
-
-        //Compute normals matrix for camera shape
-        const cameraNormalMatrix = mat4.create();
-        mat4.invert(cameraNormalMatrix, cameraViewMatrix);
-        mat4.transpose(cameraNormalMatrix, cameraNormalMatrix);
-
-        //Instruct WebGL how to pull out vertices
-        ctx.bindBuffer(ctx.ARRAY_BUFFER, models.cube.buffers.vertex);
-        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexPosition, 3, ctx.FLOAT, false, 0, 0);
-        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexPosition);
-
-        //Instruct WebGL how to pull out colors
-        ctx.bindBuffer(ctx.ARRAY_BUFFER, models.cube.buffers.color);
-        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexColor, 4, ctx.FLOAT, false, 0, 0);
-        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexColor);
-
-        //Instruct WebGL how to pull out normals
-        ctx.bindBuffer(ctx.ARRAY_BUFFER, models.cube.buffers.normal);
-        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexNormal, 3, ctx.FLOAT, false, 0, 0);
-        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexNormal);
-
-        //Tell WebGl to use element array
-        ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, models.cube.buffers.index);
-
-        //Tell WebGL to use the shader program
-        ctx.useProgram(shaderProgramData.program);
-
-        //Set the uniforms
-        ctx.uniformMatrix4fv(shaderProgramData.uniforms.projectionMatrix, false, newProjectionMatrix);
-        ctx.uniformMatrix4fv(shaderProgramData.uniforms.modelViewMatrix, false, cameraViewMatrix);
-        ctx.uniformMatrix4fv(shaderProgramData.uniforms.worldViewMatrix, false, newWorldViewMatrix);
-        ctx.uniformMatrix4fv(shaderProgramData.uniforms.normalMatrix, false, cameraNormalMatrix);
-
-        //Draw triangles
-        ctx.drawElements(ctx.TRIANGLES, models.cube.indexCount, ctx.UNSIGNED_SHORT, 0);
-	}
-
-    for (object in objects) {
-
-        //Compute new model view matrix
-        const newModelViewMatrix = mat4.create();
-
-        mat4.translate(newModelViewMatrix, newModelViewMatrix, [objects[object].x, objects[object].y, objects[object].z]);  //Fourth transform: move back from origin based on position
-        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].pitch, [1, 0, 0]); //Third transform: rotate around x based on object pitch
-        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].yaw, [0, 1, 0]);   //Second transform: rotate around y based on object yaw
-        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].roll, [0, 0, 1]);  //First transform: rotate around z based on object roll
-
-        //Compute new normals matrix
-        const newNormalMatrix = mat4.create();
-        mat4.invert(newNormalMatrix, newModelViewMatrix);
-        mat4.transpose(newNormalMatrix, newNormalMatrix);
-
-        //Instruct WebGL how to pull out vertices
-        ctx.bindBuffer(ctx.ARRAY_BUFFER, objects[object].model.buffers.vertex);
-        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexPosition, 3, ctx.FLOAT, false, 0, 0);
-        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexPosition);
-
-        //Instruct WebGL how to pull out colors
-        ctx.bindBuffer(ctx.ARRAY_BUFFER, objects[object].model.buffers.color);
-        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexColor, 4, ctx.FLOAT, false, 0, 0);
-        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexColor);
-
-        //Instruct WebGL how to pull out normals
-        ctx.bindBuffer(ctx.ARRAY_BUFFER, objects[object].model.buffers.normal);
-        ctx.vertexAttribPointer(shaderProgramData.attributes.vertexNormal, 3, ctx.FLOAT, false, 0, 0);
-        ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexNormal);
-
-        //Tell WebGl to use element array
-        ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, objects[object].model.buffers.index);
-
-        //Tell WebGL to use the shader program
-        ctx.useProgram(shaderProgramData.program);
-
-        //Set the uniforms
-        ctx.uniformMatrix4fv(shaderProgramData.uniforms.projectionMatrix, false, newProjectionMatrix);
-        ctx.uniformMatrix4fv(shaderProgramData.uniforms.modelViewMatrix, false, newModelViewMatrix);
-        ctx.uniformMatrix4fv(shaderProgramData.uniforms.worldViewMatrix, false, newWorldViewMatrix);
-        ctx.uniformMatrix4fv(shaderProgramData.uniforms.normalMatrix, false, newNormalMatrix);
-
-        //Draw triangles
-        ctx.drawElements(ctx.TRIANGLES, objects[object].model.indexCount, ctx.UNSIGNED_SHORT, 0);
-
-        //Update rotation for next draw
-        //updateObjectRotation(object, deltaT);
-    }
-
-    ctx.viewport(ctx.canvas.width / 2.0, 0, ctx.canvas.width / 2.0, ctx.canvas.height); //Resize viewport again for other side
-
-    //Compute worldViewMatrix based on opposite coordinates of camera position
-    newWorldViewMatrix = mat4.clone(camera.rotationMatrix);
+    //Compute worldViewMatrix based on opposite coordinates of camera position and camera rotation
+    const newWorldViewMatrix = mat4.clone(camera.rotationMatrix);
     mat4.translate(newWorldViewMatrix, newWorldViewMatrix, [camera.x * -1.0, camera.y * -1.0, camera.z * -1.0]); //Second transform, move objects away from camera
 
     for (object in objects) {
@@ -667,8 +567,11 @@ function updateMouse(event) {
     lastMousePosition.x = event.offsetX;
     lastMousePosition.y = event.offsetY;
 
-    //Yaw and pitch based on change in x and y
+    console.log("deltaX: " + deltaX + " deltaY: " + deltaY);
 
+    //Yaw and pitch based on change in x and y
+    pitchUp(deltaY * -0.01);
+    yawRight(deltaX * -0.01);
 }
 
 //Function to reset inwindow flag for mouse if mouse leaves
