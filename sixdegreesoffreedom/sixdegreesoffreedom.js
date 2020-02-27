@@ -247,6 +247,8 @@ var objects = {
         pitch: 0.0,
         yaw: 0.0,
 
+        scale: 1.0,
+
         rollSpeed: 1.0,
         pitchSpeed: 0.0,
         yawSpeed: 2.0,
@@ -263,6 +265,8 @@ var objects = {
         roll: 0.0,
         pitch: 0.0,
         yaw: 0.0,
+
+        scale: 1.0,
 
         rollSpeed: 0.0,
         pitchSpeed: 0.0,
@@ -281,6 +285,8 @@ var objects = {
         pitch: 0.0,
         yaw: 0.0,
 
+        scale: 1.0,
+
         rollSpeed: 0.0,
         pitchSpeed: 0.0,
         yawSpeed: 0.0,
@@ -297,6 +303,8 @@ var objects = {
         roll: 0.0,
         pitch: 0.0,
         yaw: 0.0,
+
+        scale: 1.0,
 
         rollSpeed: 0.0,
         pitchSpeed: 0.0,
@@ -315,9 +323,11 @@ var objects = {
         pitch: 0.0,
         yaw: 0.0,
 
-        rollSpeed: 0.0,
+        scale: 100.0,
+
+        rollSpeed: 0.03,
         pitchSpeed: 0.0,
-        yawSpeed: 60.0,
+        yawSpeed: 0.06,
 
         model: models.cube,
     },
@@ -339,7 +349,7 @@ var camera = {
     //Camera rotation matrix, needs to be recomputed on each roll, pitch, or yaw update
     rotationMatrix: mat4.create(),
 
-    speed: 0.2,
+    speed: 15.0,
 
     rightSpeed: 0.0,
     upSpeed: 0.0,
@@ -376,11 +386,6 @@ function main() {
         alert("Unable to initialize WebGL. It may not be supported by this browser.");
         return;
     }
-
-    //Clear the canvas
-    ctx.clearColor(0.3984375, 1.0, 1.0, 1.0); //set clear color to black
-    ctx.clearDepth(1.0); //set clear depth to 1.0
-    ctx.clear(ctx.COLOR_BUFFER_BIT, ctx.DEPTH_BUFFER_BIT);
 
     //Create the shader program
     const shaderProgram = createShaderProgram(ctx);
@@ -426,6 +431,7 @@ function main() {
 
         //Update camera roll
         updateRoll(deltaT);
+        updatePosition(deltaT);
 
         drawScene(ctx, shaderProgramData, deltaT);
 
@@ -550,28 +556,38 @@ function drawScene(ctx, shaderProgramData, deltaT) {
     ctx.enable(ctx.DEPTH_TEST);
     ctx.depthFunc(ctx.LEQUAL);
 
+    //Tell WebGL to use the shader program
+    ctx.useProgram(shaderProgramData.program);
+
     //Compute new projection matrix
     const newProjectionMatrix = mat4.create();
     mat4.perspective(newProjectionMatrix, 45 * Math.PI / 180, ctx.canvas.width / ctx.canvas.height, 0.1, 1000.0);
 
     //Compute worldViewMatrix based on opposite coordinates of camera position and camera rotation
-    const newWorldViewMatrix = mat4.clone(camera.rotationMatrix);
-    mat4.translate(newWorldViewMatrix, newWorldViewMatrix, [camera.x * -1.0, camera.y * -1.0, camera.z * -1.0]); //Second transform, move objects away from camera
+    const newWorldViewMatrix = mat4.clone(camera.rotationMatrix); //Second transform, rotate whole world around camera (in the opposite direction the camera is facing)
+    mat4.translate(newWorldViewMatrix, newWorldViewMatrix, [camera.x * -1.0, camera.y * -1.0, camera.z * -1.0]); //First transform, move whole world away from camera
+
+    //Set worldview and projection uniforms
+    ctx.uniformMatrix4fv(shaderProgramData.uniforms.projectionMatrix, false, newProjectionMatrix);
+    ctx.uniformMatrix4fv(shaderProgramData.uniforms.worldViewMatrix, false, newWorldViewMatrix);
 
     for (object in objects) {
 
         //Compute new model view matrix
         const newModelViewMatrix = mat4.create();
 
-        mat4.translate(newModelViewMatrix, newModelViewMatrix, [objects[object].x, objects[object].y, objects[object].z]);  //Fourth transform: move back from origin based on position
-        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].pitch, [1, 0, 0]); //Third transform: rotate around x based on object pitch
-        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].yaw, [0, 1, 0]);   //Second transform: rotate around y based on object yaw
-        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].roll, [0, 0, 1]);  //First transform: rotate around z based on object roll
+        mat4.translate(newModelViewMatrix, newModelViewMatrix, [objects[object].x, objects[object].y, objects[object].z]);  //Fifth transform: move back from origin based on position
+        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].pitch, [1, 0, 0]); //Fourth transform: rotate around x based on object pitch
+        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].yaw, [0, 1, 0]);   //Third transform: rotate around y based on object yaw
+        mat4.rotate(newModelViewMatrix, newModelViewMatrix, objects[object].roll, [0, 0, 1]);  //Second transform: rotate around z based on object roll
 
         //Compute new normals matrix
+        //Do it before the scaling is applied, because otherwise the lighting doesn't work for some reason, not sure why :/
         const newNormalMatrix = mat4.create();
         mat4.invert(newNormalMatrix, newModelViewMatrix);
         mat4.transpose(newNormalMatrix, newNormalMatrix);
+
+        mat4.scale(newModelViewMatrix, newModelViewMatrix, [objects[object].scale, objects[object].scale, objects[object].scale]); //First transform: scale object based on object scale
 
         //Instruct WebGL how to pull out vertices
         ctx.bindBuffer(ctx.ARRAY_BUFFER, objects[object].model.buffers.vertex);
@@ -588,17 +604,12 @@ function drawScene(ctx, shaderProgramData, deltaT) {
         ctx.vertexAttribPointer(shaderProgramData.attributes.vertexNormal, 3, ctx.FLOAT, false, 0, 0);
         ctx.enableVertexAttribArray(shaderProgramData.attributes.vertexNormal);
 
+        //Set the uniforms
+        ctx.uniformMatrix4fv(shaderProgramData.uniforms.modelViewMatrix, false, newModelViewMatrix);
+        ctx.uniformMatrix4fv(shaderProgramData.uniforms.normalMatrix, false, newNormalMatrix);
+
         //Tell WebGl to use element array
         ctx.bindBuffer(ctx.ELEMENT_ARRAY_BUFFER, objects[object].model.buffers.index);
-
-        //Tell WebGL to use the shader program
-        ctx.useProgram(shaderProgramData.program);
-
-        //Set the uniforms
-        ctx.uniformMatrix4fv(shaderProgramData.uniforms.projectionMatrix, false, newProjectionMatrix);
-        ctx.uniformMatrix4fv(shaderProgramData.uniforms.modelViewMatrix, false, newModelViewMatrix);
-        ctx.uniformMatrix4fv(shaderProgramData.uniforms.worldViewMatrix, false, newWorldViewMatrix);
-        ctx.uniformMatrix4fv(shaderProgramData.uniforms.normalMatrix, false, newNormalMatrix);
 
         //Draw triangles
         ctx.drawElements(ctx.TRIANGLES, objects[object].model.indexCount, ctx.UNSIGNED_SHORT, 0);
@@ -653,11 +664,15 @@ function mouseLeave(event) {
 //Function to interpret which key was pressed down
 function parseDownKey(event) {
 
+    var code = event.code;  //Edge does not recognize this apparently
+
+    //console.log("Key Down: " + code);
+
     //Find which key was pressed down
     for (key in keys) {
 
         //If the code of the key pressed matches
-        if (event.code == keys[key].code) {
+        if (code == keys[key].code) {
 
             //If key was not already down
             if (!(keys[key].down)) {
@@ -679,11 +694,15 @@ function parseDownKey(event) {
 //Function to interpret which key was let go
 function parseUpKey(event) {
 
+    var code = event.code; //Edge does not recognize this apparently
+
+    //console.log("Key Up: " + code);
+
     //Find which key was released
     for (key in keys) {
 
         //If the code of the key released matches
-        if (event.code == keys[key].code) {
+        if (code == keys[key].code) {
 
             //If key was already down
             if (keys[key].down) {
@@ -711,7 +730,7 @@ function updateCameraSpeed() {
         //Set forward speed to 0.0
         camera.forwardSpeed = 0.0;
 
-        console.log("Camera forward speed set to " + camera.forwardSpeed);
+        //console.log("Camera forward speed set to " + camera.forwardSpeed);
     }
     else {
 
@@ -721,14 +740,14 @@ function updateCameraSpeed() {
             //Set forward speed to camera.speed
             camera.forwardSpeed = camera.speed;
 
-            console.log("Camera forward speed set to " + camera.forwardSpeed);
+            //console.log("Camera forward speed set to " + camera.forwardSpeed);
         }
         else {
 
             //Set forward speed to reverse camera.speed
             camera.forwardSpeed = camera.speed * -1.0;
 
-            console.log("Camera forward speed set to " + camera.forwardSpeed);
+            //console.log("Camera forward speed set to " + camera.forwardSpeed);
         }
     }
 
@@ -738,7 +757,7 @@ function updateCameraSpeed() {
         //Set right speed to 0.0
         camera.rightSpeed = 0.0;
 
-        console.log("Camera right speed set to " + camera.rightSpeed);
+        //console.log("Camera right speed set to " + camera.rightSpeed);
     }
     else {
 
@@ -748,14 +767,14 @@ function updateCameraSpeed() {
             //Set right speed to reverse camera.speed
             camera.rightSpeed = camera.speed * -1.0;
 
-            console.log("Camera right speed set to " + camera.rightSpeed);
+            //console.log("Camera right speed set to " + camera.rightSpeed);
         }
         else {
 
             //Set right speed to camera.speed
             camera.rightSpeed = camera.speed;
 
-            console.log("Camera right speed set to " + camera.rightSpeed);
+            //console.log("Camera right speed set to " + camera.rightSpeed);
         }
     }
 
@@ -765,7 +784,7 @@ function updateCameraSpeed() {
         //Set up speed to 0.0
         camera.upSpeed = 0.0;
 
-        console.log("Camera up speed set to " + camera.upSpeed);
+        //console.log("Camera up speed set to " + camera.upSpeed);
     }
     else {
 
@@ -775,14 +794,14 @@ function updateCameraSpeed() {
             //Set up speed to camera.speed
             camera.upSpeed = camera.speed;
 
-            console.log("Camera up speed set to " + camera.upSpeed);
+            //console.log("Camera up speed set to " + camera.upSpeed);
         }
         else {
 
             //Set up speed to reverse camera.speed
             camera.upSpeed = camera.speed * -1.0;
 
-            console.log("Camera up speed set to " + camera.upSpeed);
+            //console.log("Camera up speed set to " + camera.upSpeed);
         }
     }
 
@@ -792,7 +811,7 @@ function updateCameraSpeed() {
         //Set roll speed to 0.0
         camera.rollSpeed = 0.0;
 
-        console.log("Camera roll speed set to " + camera.rollSpeed);
+        //console.log("Camera roll speed set to " + camera.rollSpeed);
     }
     else {
 
@@ -802,14 +821,14 @@ function updateCameraSpeed() {
             //Set roll speed
             camera.rollSpeed = -2.0;
 
-            console.log("Camera roll speed set to " + camera.rollSpeed);
+            //console.log("Camera roll speed set to " + camera.rollSpeed);
         }
         else {
 
             //Set roll speed
             camera.rollSpeed = 2.0;
 
-            console.log("Camera roll speed set to " + camera.rollSpeed);
+            //console.log("Camera roll speed set to " + camera.rollSpeed);
         }
     }
 }
@@ -821,6 +840,31 @@ function updateRoll(deltaT) {
     if (!(camera.rollSpeed == 0.0)) {
 
         rollRight(camera.rollSpeed * deltaT); //Roll the camera by speed * change in time from last frame
+    }
+}
+
+//Function to update the camera position based on camera speeds
+function updatePosition(deltaT) {
+
+    //Move camera forward/backward
+    //If forward speed is not zero
+    if (!(camera.forwardSpeed == 0.0)) {
+
+        moveForward(camera.forwardSpeed * deltaT); //Move camera forward by forwardSpeed * change in time from last frame
+    }
+
+    //Move camera up/down
+    //If up speed is not zero
+    if (!(camera.upSpeed == 0.0)) {
+
+        moveUp(camera.upSpeed * deltaT); //Move camera forward by forwardSpeed * change in time from last frame
+    }
+
+    //Move camera left/right
+    //If right speed is not zero
+    if (!(camera.rightSpeed == 0.0)) {
+
+        moveRight(camera.rightSpeed * deltaT); //Move camera forward by rightSpeed * change in time from last frame
     }
 }
 
