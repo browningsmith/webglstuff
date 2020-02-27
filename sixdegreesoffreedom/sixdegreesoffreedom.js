@@ -41,6 +41,50 @@ const fragmentShaderCode = `
     }
 `;
 
+const keys = {
+
+    W: {
+
+        code: "KeyW",
+        down: false,
+    },
+    S: {
+
+        code: "KeyS",
+        down: false,
+    },
+    A: {
+
+        code: "KeyA",
+        down: false,
+    },
+    D: {
+
+        code: "KeyD",
+        down: false,
+    },
+    Q: {
+
+        code: "KeyQ",
+        down: false,
+    },
+    E: {
+
+        code: "KeyE",
+        down: false,
+    },
+    Space: {
+
+        code: "Space",
+        down: false,
+    },
+    ShiftLeft: {
+
+        code: "ShiftLeft",
+        down: false,
+    },
+};
+
 var models = {
 
     cube: {
@@ -296,6 +340,11 @@ var camera = {
     rotationMatrix: mat4.create(),
 
     speed: 0.2,
+
+    rightSpeed: 0.0,
+    upSpeed: 0.0,
+    forwardSpeed: 0.0,
+    rollSpeed: 0.0,
 };
 
 //Mouse position, contains data on last mouse position relative to the canvas
@@ -306,8 +355,6 @@ var lastMousePosition = {
     y: 0,
 };
 
-var reportOnZero = 0;
-
 //Main function, to be executed on load
 function main() {
 
@@ -317,7 +364,8 @@ function main() {
     //Add mouse event listeners
     canvas.addEventListener("mousemove", updateMouse);
     canvas.addEventListener("mouseleave", mouseLeave);
-    window.addEventListener("keydown", parseKeys);
+    window.addEventListener("keydown", parseDownKey);
+    window.addEventListener("keyup", parseUpKey);
 
     //Get canvas context
     const ctx = canvas.getContext("webgl");
@@ -376,9 +424,10 @@ function main() {
         var deltaT = now - previousTimeStamp;
         previousTimeStamp = now;
 
-        drawScene(ctx, shaderProgramData, deltaT);
+        //Update camera roll
+        updateRoll(deltaT);
 
-        report();
+        drawScene(ctx, shaderProgramData, deltaT);
 
         requestAnimationFrame(newFrame);
     }
@@ -601,42 +650,177 @@ function mouseLeave(event) {
     lastMousePosition.inWindow = false;
 }
 
-//Function to interpret keys to move camera around
-function parseKeys(event) {
+//Function to interpret which key was pressed down
+function parseDownKey(event) {
 
-    //console.log(event.code);
+    //Find which key was pressed down
+    for (key in keys) {
 
-    if (event.code == "KeyW") { //Forward
-    
-        moveForward(camera.speed);
-	}
-    else if (event.code == "KeyS") { //Backward
-    
-        moveForward(camera.speed * -1.0);
-	}
-    else if (event.code == "KeyA") { //Left
-    
-        moveRight(camera.speed * -1.0);
-	}
-    else if (event.code == "KeyD") { //Right
-    
-        moveRight(camera.speed);
-	}
-    else if (event.code == "Space") { //Right
-    
-        moveUp(camera.speed);
-	}
-    else if (event.code == "ShiftLeft") { //Right
-    
-        moveUp(camera.speed * -1.0);
+        //If the code of the key pressed matches
+        if (event.code == keys[key].code) {
+
+            //If key was not already down
+            if (!(keys[key].down)) {
+
+                //Update that key is down
+                keys[key].down = true;
+
+                //Update camera speeds
+                updateCameraSpeed();
+            }
+            else {
+
+                return;
+            }
+        } 
     }
-    else if (event.code == "KeyQ") { //Right
-    
-        rollRight(-0.05);
+}
+
+//Function to interpret which key was let go
+function parseUpKey(event) {
+
+    //Find which key was released
+    for (key in keys) {
+
+        //If the code of the key released matches
+        if (event.code == keys[key].code) {
+
+            //If key was already down
+            if (keys[key].down) {
+
+                //Update that key is up
+                keys[key].down = false;
+
+                //Update camera speeds
+                updateCameraSpeed();
+            }
+            else {
+
+                return;
+            }
+        } 
     }
-    else if (event.code == "KeyE") { //Right
-    
-        rollRight(0.05);
+}
+
+//Function to update the camera speeds based on which keys are currently pressed down
+function updateCameraSpeed() {
+
+    //If both W and S are down, or if neither of them are down
+    if ((keys.W.down && keys.S.down) || !(keys.W.down || keys.S.down)) {
+
+        //Set forward speed to 0.0
+        camera.forwardSpeed = 0.0;
+
+        console.log("Camera forward speed set to " + camera.forwardSpeed);
+    }
+    else {
+
+        //If W is the key that is down
+        if (keys.W.down) {
+
+            //Set forward speed to camera.speed
+            camera.forwardSpeed = camera.speed;
+
+            console.log("Camera forward speed set to " + camera.forwardSpeed);
+        }
+        else {
+
+            //Set forward speed to reverse camera.speed
+            camera.forwardSpeed = camera.speed * -1.0;
+
+            console.log("Camera forward speed set to " + camera.forwardSpeed);
+        }
+    }
+
+    //If both A and D are down, or if neither of them are down
+    if ((keys.A.down && keys.D.down) || !(keys.A.down || keys.D.down)) {
+
+        //Set right speed to 0.0
+        camera.rightSpeed = 0.0;
+
+        console.log("Camera right speed set to " + camera.rightSpeed);
+    }
+    else {
+
+        //If A is the key that is down
+        if (keys.A.down) {
+
+            //Set right speed to reverse camera.speed
+            camera.rightSpeed = camera.speed * -1.0;
+
+            console.log("Camera right speed set to " + camera.rightSpeed);
+        }
+        else {
+
+            //Set right speed to camera.speed
+            camera.rightSpeed = camera.speed;
+
+            console.log("Camera right speed set to " + camera.rightSpeed);
+        }
+    }
+
+    //If both Space and ShiftLeft are down, or if neither of them are down
+    if ((keys.Space.down && keys.ShiftLeft.down) || !(keys.Space.down || keys.ShiftLeft.down)) {
+
+        //Set up speed to 0.0
+        camera.upSpeed = 0.0;
+
+        console.log("Camera up speed set to " + camera.upSpeed);
+    }
+    else {
+
+        //If A is the key that is down
+        if (keys.Space.down) {
+
+            //Set up speed to camera.speed
+            camera.upSpeed = camera.speed;
+
+            console.log("Camera up speed set to " + camera.upSpeed);
+        }
+        else {
+
+            //Set up speed to reverse camera.speed
+            camera.upSpeed = camera.speed * -1.0;
+
+            console.log("Camera up speed set to " + camera.upSpeed);
+        }
+    }
+
+    //If both Q and E are down, or if neither of them are down
+    if ((keys.Q.down && keys.E.down) || !(keys.Q.down || keys.E.down)) {
+
+        //Set roll speed to 0.0
+        camera.rollSpeed = 0.0;
+
+        console.log("Camera roll speed set to " + camera.rollSpeed);
+    }
+    else {
+
+        //If Q is the key that is down
+        if (keys.Q.down) {
+
+            //Set roll speed
+            camera.rollSpeed = -2.0;
+
+            console.log("Camera roll speed set to " + camera.rollSpeed);
+        }
+        else {
+
+            //Set roll speed
+            camera.rollSpeed = 2.0;
+
+            console.log("Camera roll speed set to " + camera.rollSpeed);
+        }
+    }
+}
+
+//Function to update the camera roll based on rollSpeed
+function updateRoll(deltaT) {
+
+    //If roll speed is not zero
+    if (!(camera.rollSpeed == 0.0)) {
+
+        rollRight(camera.rollSpeed * deltaT); //Roll the camera by speed * change in time from last frame
     }
 }
 
@@ -740,24 +924,6 @@ function moveUp(speed) {
     camera.x += camera.upVec[0] * speed;
     camera.y += camera.upVec[1] * speed;
     camera.z += camera.upVec[2] * speed;
-}
-
-//Function to report on camera vectors at certain intervals
-function report() {
-
-    //If reportOnZero has reached zero, report and reset reportOnZero
-    if (reportOnZero <= 2147483647) {
-    
-        reportOnZero = 2147483647;
-        console.log("REPORT:");
-        console.log(camera.rightVec);
-        console.log(camera.upVec);
-        console.log(camera.forwardVec);
-
-        return;
-	}
-
-    reportOnZero -= 1;
 }
 
 window.onload = main;
