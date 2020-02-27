@@ -260,6 +260,23 @@ var objects = {
 
         model: models.cube,
     },
+
+    cube5: {
+    
+        x: 0.0,
+        y: -600.0,
+        z: 0.0,
+
+        roll: 0.0,
+        pitch: 0.0,
+        yaw: 0.0,
+
+        rollSpeed: 0.0,
+        pitchSpeed: 0.0,
+        yawSpeed: 60.0,
+
+        model: models.cube,
+    },
 };
 
 //Camera object, contains data on camera position and angle
@@ -288,6 +305,8 @@ var lastMousePosition = {
     x: 0,
     y: 0,
 };
+
+var reportOnZero = 0;
 
 //Main function, to be executed on load
 function main() {
@@ -358,6 +377,8 @@ function main() {
         previousTimeStamp = now;
 
         drawScene(ctx, shaderProgramData, deltaT);
+
+        report();
 
         requestAnimationFrame(newFrame);
     }
@@ -567,7 +588,7 @@ function updateMouse(event) {
     lastMousePosition.x = event.offsetX;
     lastMousePosition.y = event.offsetY;
 
-    console.log("deltaX: " + deltaX + " deltaY: " + deltaY);
+    //console.log("deltaX: " + deltaX + " deltaY: " + deltaY);
 
     //Yaw and pitch based on change in x and y
     pitchUp(deltaY * -0.01);
@@ -583,7 +604,7 @@ function mouseLeave(event) {
 //Function to interpret keys to move camera around
 function parseKeys(event) {
 
-    console.log(event.code);
+    //console.log(event.code);
 
     if (event.code == "KeyW") { //Forward
     
@@ -639,6 +660,10 @@ function rollRight(angle) {
     //Apply this rotation to camera's rightVec and upVec
     vec3.transformQuat(camera.rightVec, camera.rightVec, rollQuat);
     vec3.transformQuat(camera.upVec, camera.upVec, rollQuat);
+
+    //Normalize camera's rightVec and upVec
+    vec3.normalize(camera.rightVec, camera.rightVec);
+    vec3.normalize(camera.upVec, camera.upVec);
 }
 
 //Function to pitch the camera around it's local x vector
@@ -661,6 +686,10 @@ function pitchUp(angle) {
     //Apply this rotation to camera's upVec and forwardVec
     vec3.transformQuat(camera.upVec, camera.upVec, pitchQuat);
     vec3.transformQuat(camera.forwardVec, camera.forwardVec, pitchQuat);
+
+    //Normalize camera's upVec and forwardVec
+    vec3.normalize(camera.upVec, camera.upVec);
+    vec3.normalize(camera.forwardVec, camera.forwardVec);
 }
 
 //Function to yaw the camera around it's local y vector
@@ -683,6 +712,10 @@ function yawRight(angle) {
     //Apply this rotation to camera's rightVec and forwardVec
     vec3.transformQuat(camera.rightVec, camera.rightVec, yawQuat);
     vec3.transformQuat(camera.forwardVec, camera.forwardVec, yawQuat);
+
+    //Normalize camera's rightVec and forwardVec
+    vec3.normalize(camera.rightVec, camera.rightVec);
+    vec3.normalize(camera.forwardVec, camera.forwardVec);
 }
 
 //Function to move forward based on camera directional vectors
@@ -707,6 +740,24 @@ function moveUp(speed) {
     camera.x += camera.upVec[0] * speed;
     camera.y += camera.upVec[1] * speed;
     camera.z += camera.upVec[2] * speed;
+}
+
+//Function to report on camera vectors at certain intervals
+function report() {
+
+    //If reportOnZero has reached zero, report and reset reportOnZero
+    if (reportOnZero <= 2147483647) {
+    
+        reportOnZero = 2147483647;
+        console.log("REPORT:");
+        console.log(camera.rightVec);
+        console.log(camera.upVec);
+        console.log(camera.forwardVec);
+
+        return;
+	}
+
+    reportOnZero -= 1;
 }
 
 window.onload = main;
